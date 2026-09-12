@@ -1,0 +1,15 @@
+# halo-gauge-experiment, series
+# date      : 2026-09-11 22:53:56
+# firmware  : probe-0.2
+# light     : blue
+# gain      : 16x
+# aperture  : none
+# samples   : 50
+
+      ch     on.mean   on.sd   off.mean  off.sd   signal   noise
+      C           0.0    0.00       0.0    0.00      0.0    0.00 cnt
+      R           0.0    0.00       0.0    0.00      0.0    0.00 cnt
+      G           0.0    0.00       0.0    0.00      0.0    0.00 cnt
+      B           0.0    0.00       0.0    0.00      0.0    0.00 cnt
+      PT-A      142.0    0.00     142.0    0.00      0.0    0.00 mV
+      PT-B      142.0    0.00     142.0    0.00      0.0    0.00 mV

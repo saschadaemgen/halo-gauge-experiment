@@ -1,0 +1,11 @@
+# halo-gauge-experiment, report
+# date      : 2026-09-11 23:54:15
+# firmware  : probe-0.2
+# light     : ?
+# gain      : n/a
+# aperture  : none
+# samples   : n/a
+
+  ch     white     yellow   contrast    noise     SNR   verdict
+
+  best channel: none  SNR=0.0  ->  NO-GO: contrast insufficient

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HALO LAB</title>
+<style>
+:root{
+  --ui:18px;
+  --bg:#07090B; --panel:#0F1317; --line:#222A31; --ink:#DDE6EC; --dim:#8A99A5;
+  --beam:#009FE3; --beam-dim:#0A5C82; --needle:#FCB803; --dial:#F1EFE8; --alarm:#E2483F;
+  --mono:"DejaVu Sans Mono","Liberation Mono","Consolas",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:var(--ui)}
+body{width:100%;height:100vh;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:var(--mono);font-size:1rem;line-height:1.3;-webkit-font-smoothing:antialiased;
+  display:grid;grid-template-rows:auto 1fr auto}
+
+/* ================= header ================= */
+header{display:flex;align-items:center;gap:1rem;padding:.6rem .8rem;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.8rem;flex:none}
+#logo{width:4.3rem;height:4.3rem;display:block;overflow:visible;flex:none}
+#lg-fill{fill:var(--beam-dim);transition:fill .4s}
+#lg-ring{fill:none;stroke:var(--beam-dim);stroke-width:40.3;stroke-miterlimit:10;
+  transform-box:fill-box;transform-origin:50% 50%;transition:stroke .4s}
+#lg-trace{display:none}
+body.up #lg-fill{fill:var(--beam)}
+body.up #lg-ring{stroke:var(--dial);animation:spin 9s linear infinite}
+body.busy #lg-ring{animation:spin 1.1s linear infinite}
+body.lit #lg-fill{fill:var(--dial)}
+body.lit #lg-ring{stroke:var(--beam)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#lg-ring{animation:none!important}}
+.names{display:flex;flex-direction:column;gap:.15rem;align-items:flex-start}
+.mark{font-size:1.5rem;letter-spacing:.02em;color:var(--dial);white-space:nowrap}
+.sub{font-size:.86rem;color:var(--dim);white-space:nowrap}
+.sub i{font-style:normal;color:var(--beam)}
+.st{margin-left:auto;display:flex;align-items:center;gap:.4rem;justify-content:flex-end;min-width:0}
+.chip{display:flex;align-items:baseline;gap:.35rem;background:var(--panel);
+  border:1px solid var(--line);padding:.3rem .5rem;white-space:nowrap;min-width:0;overflow:hidden}
+.chip i{text-overflow:ellipsis;overflow:hidden}
+.chip b{font-weight:400;color:var(--dim);font-size:.72rem}
+.chip i{font-style:normal;font-size:.95rem}
+.chip.link i{color:var(--alarm)}
+body.up .chip.link i{color:var(--beam)}
+#dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--alarm);flex:none}
+body.up #dot{background:var(--beam)}
+
+/* ================= views ================= */
+main{position:relative;min-height:0;overflow:hidden}
+.page{position:absolute;inset:0;padding:.7rem .8rem;display:none;flex-direction:column;
+  min-height:0;gap:.6rem}
+.page.on{display:flex}
+
+/* --- live --- */
+#live-top{display:flex;align-items:stretch;gap:1rem;flex:none}
+.readout{display:flex;flex-direction:column;justify-content:center;min-width:9.5rem}
+.readout .lbl{font-size:.8rem;color:var(--dim);letter-spacing:.08em}
+.readout .n{font-size:clamp(2.6rem,9.5vh,5rem);line-height:1;font-variant-numeric:tabular-nums;
+  color:var(--dial)}
+.readout .n small{font-size:.3em;color:var(--dim);margin-left:.35em}
+.chips{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(6.6rem,1fr));
+  gap:.4rem;align-content:center}
+.cch{background:var(--panel);border:1px solid var(--line);padding:.35rem .5rem}
+.cch .k{font-size:.72rem;color:var(--dim)}
+.cch .v{font-size:1.15rem;font-variant-numeric:tabular-nums;display:flex;align-items:baseline}
+.cch .v span{margin-left:auto;font-size:.7rem;color:var(--dim)}
+.cch.hot{border-color:var(--beam)}
+#livewrap{flex:1 1 auto;min-height:5rem}
+#sat{font-size:.85rem;color:var(--needle);visibility:hidden;flex:none}
+
+/* --- series --- */
+.runline{display:flex;align-items:center;gap:.9rem;font-size:.95rem;flex:none}
+.led{display:flex;align-items:center;gap:.45rem;color:var(--dim)}
+.led i{width:.75rem;height:.75rem;border-radius:50%;background:var(--line)}
+.led.on i{background:var(--beam);box-shadow:0 0 .5rem var(--beam)}
+#prog{flex:1;height:.4rem;background:#0B0F12;border:1px solid var(--line)}
+#prog div{height:100%;width:0;background:var(--beam)}
+#count{font-variant-numeric:tabular-nums;color:var(--dim)}
+#wrap{flex:1 1 auto;min-height:5rem}
+canvas{display:block;width:100%;height:100%;background:#0B0F12;border:1px solid var(--line)}
+
+/* --- tables --- */
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:1.05rem}
+th{font-weight:400;color:var(--dim);font-size:.75rem;text-align:right;padding:0 0 .4rem;
+  letter-spacing:.06em}
+th:first-child{text-align:left}
+td{padding:.3rem 0;text-align:right;white-space:nowrap}
+td:first-child{text-align:left;color:var(--dim);font-size:.85rem}
+td:last-child{color:var(--dim);font-size:.75rem;text-align:left;padding-left:.5rem;width:2.6rem}
+tr.off td{color:var(--dim)}
+.white{color:var(--dial)}
+.yellow{color:var(--needle)}
+.go{color:var(--beam)}
+.scroll{overflow:auto;min-height:0}
+.note{color:var(--dim);font-size:.8rem;margin-top:.4rem}
+
+/* --- empty states --- */
+.steps{display:flex;flex-direction:column;gap:.7rem;margin:auto 0}
+.step{display:flex;align-items:center;gap:.8rem;font-size:1rem;color:var(--dim)}
+.step u{text-decoration:none;font-size:1.1rem;color:var(--beam);border:1px solid var(--beam);
+  padding:.2rem .6rem;flex:none}
+.step.done{color:var(--ink)}
+.step.done u{color:var(--bg);background:var(--beam)}
+
+#verdict{margin-top:auto;border-top:1px solid var(--line);padding-top:.6rem;flex:none;
+  display:flex;align-items:baseline;gap:.9rem}
+#verdict .big{font-size:clamp(1.8rem,7vh,3rem);line-height:1;color:var(--dim);letter-spacing:.02em}
+#verdict .big.go{color:var(--beam);text-shadow:0 0 1.2rem rgba(0,159,227,.55)}
+#verdict p{font-size:.9rem;color:var(--dim)}
+
+/* ================= footer ================= */
+footer{display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;
+  gap:.4rem;padding:.5rem .8rem;border-top:1px solid var(--line)}
+button{font-family:var(--mono);font-size:clamp(.72rem,.95vw,1rem);color:var(--ink);
+  background:var(--panel);border:1px solid var(--line);padding:.62rem .4rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:.45rem;min-width:0;
+  white-space:nowrap;overflow:hidden}
+button:hover{border-color:var(--beam)}
+button:focus-visible{outline:2px solid var(--beam);outline-offset:1px}
+button kbd{font:inherit;color:var(--beam);flex:none}
+button em{font-style:normal;font-size:.72em;color:var(--dim);border:1px solid var(--line);
+  padding:0 .35em;flex:none;margin-left:.1rem}
+button.tab.on{border-color:var(--beam);color:var(--beam)}
+button.go{border-color:var(--beam-dim)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;min-width:0}
+.chip input{font-family:var(--mono);font-size:.95rem;color:var(--needle);background:transparent;
+  border:none;width:4.6rem;padding:0;min-width:0}
+.chip input:focus{outline:none;color:var(--ink)}
+#cd{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(7,9,11,.82);z-index:20}
+#cd.on{display:flex}
+#cd .num{font-size:min(42vh,42vw);line-height:1;color:var(--beam);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 6vh rgba(0,159,227,.55);animation:tick .9s ease-out}
+#cd .num.go{color:var(--dial);text-shadow:0 0 8vh rgba(241,239,232,.6);font-size:min(19vh,19vw);
+  letter-spacing:.1em;animation:settle .5s ease-out}
+@keyframes settle{from{transform:scale(1.25);opacity:.2}to{transform:scale(1);opacity:1}}
+#cd .lbl{position:absolute;bottom:14%;font-size:1.1rem;letter-spacing:.3em;color:var(--dim)}
+#cd .ring{position:absolute;width:min(58vh,58vw);height:min(58vh,58vw);border-radius:50%;
+  border:2px solid var(--beam-dim);border-top-color:var(--beam);animation:spin 1.1s linear infinite}
+@keyframes tick{from{transform:scale(1.7);opacity:0}60%{opacity:1}to{transform:scale(1);opacity:1}}
+#toast{position:fixed;left:.8rem;bottom:4.2rem;font-size:.9rem;color:var(--ink);
+  background:var(--panel);border:1px solid var(--beam);padding:.5rem .7rem;opacity:0;
+  pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg id="logo" viewBox="0 0 1024 1024" aria-label="CYB3RGUN">
+      <path id="lg-fill" d="M450.6,880.8c-13.2-2.8-30.8-8-53-15.5-22.1-7.5-45.8-18.6-71-33.4-25.2-14.8-49.3-34.1-72.4-58-39.6-40.3-68.3-82.9-86.2-127.9-17.9-45-26.2-90.4-24.7-136.3,1.4-45.9,11.6-90.1,30.7-132.4,19.1-42.4,46-80.9,80.9-115.6,38.6-38.4,80.3-67.5,125-87.1,44.7-19.7,90.3-30.1,136.7-31.3,46.4-1.2,91.6,7,135.6,24.6,44,17.6,84.4,44.6,121.1,81.2,31.1,30.9,55.1,63.2,72,97,16.9,33.7,28.7,64.6,35.3,92.7l-98.9,39.4c-4.2-23-12.1-48.6-23.7-76.9-11.5-28.3-29.5-54.7-54-79-32-31.9-70-52.8-114.1-62.9-44-10.1-88.5-8.9-133.5,3.5-45,12.4-85.3,36.4-121.1,72-36.3,36.1-61.3,75.8-75.2,119.1-13.9,43.3-15.4,86.8-4.6,130.3,10.8,43.6,34.6,83.6,71.3,120.2,26.4,26.2,53.5,45.3,81.6,57.3,28,11.9,53.6,19.1,76.6,21.4l-34.6,97.7h0Z"/>
+      <path id="lg-ring" d="M584.6,583.4c-34.3,34.1-89.9,34.1-124.2,0-34.3-34.1-34.3-89.4,0-123.6,34.3-34.1,89.9-34.1,124.2,0,34.3,34.1,34.3,89.4,0,123.6Z"/>
+      <path id="lg-trace" d="M450.6,880.8c-13.2-2.8-30.8-8-53-15.5-22.1-7.5-45.8-18.6-71-33.4-25.2-14.8-49.3-34.1-72.4-58-39.6-40.3-68.3-82.9-86.2-127.9-17.9-45-26.2-90.4-24.7-136.3,1.4-45.9,11.6-90.1,30.7-132.4,19.1-42.4,46-80.9,80.9-115.6,38.6-38.4,80.3-67.5,125-87.1,44.7-19.7,90.3-30.1,136.7-31.3,46.4-1.2,91.6,7,135.6,24.6,44,17.6,84.4,44.6,121.1,81.2,31.1,30.9,55.1,63.2,72,97,16.9,33.7,28.7,64.6,35.3,92.7l-98.9,39.4c-4.2-23-12.1-48.6-23.7-76.9-11.5-28.3-29.5-54.7-54-79-32-31.9-70-52.8-114.1-62.9-44-10.1-88.5-8.9-133.5,3.5-45,12.4-85.3,36.4-121.1,72-36.3,36.1-61.3,75.8-75.2,119.1-13.9,43.3-15.4,86.8-4.6,130.3,10.8,43.6,34.6,83.6,71.3,120.2,26.4,26.2,53.5,45.3,81.6,57.3,28,11.9,53.6,19.1,76.6,21.4l-34.6,97.7h0Z"/>
+    </svg>
+    <div class="names">
+      <span class="mark" id="mark">HALO RESEARCH LAB</span>
+      <span class="sub" id="sub">CYB3RGUN optical gauge probe</span>
+    </div>
+  </div>
+  <div class="st">
+    <span class="chip"><b>light</b><i id="s-light" style="color:var(--beam)">blue</i></span>
+    <span class="chip"><b>gain</b><i id="s-gain">16x</i></span>
+    <span class="chip"><b>aperture</b><input id="ap" value="none"></span>
+    <span class="chip"><b>view</b><i id="v-name" style="color:var(--beam)">live</i></span>
+    <span class="chip link"><i id="dot"></i><i id="s-link">no link</i></span>
+  </div>
+</header>
+
+<main>
+  <div class="page on" id="pg-live">
+    <div id="live-top">
+      <div class="readout">
+        <span class="lbl" id="h-name">PT-A</span>
+        <span class="n"><span id="h-val">0</span><small id="h-unit">mV</small></span>
+        <span class="lbl" id="h-fw">waiting for board</span>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div id="livewrap"><canvas id="livechart"></canvas></div>
+    <div id="sat">Saturated. Press g to lower the gain.</div>
+  </div>
+
+  <div class="page" id="pg-series">
+    <div class="runline">
+      <span class="led" id="led"><i></i>LED</span>
+      <span id="prog"><div></div></span>
+      <span id="count">0 / 100</span>
+    </div>
+    <div id="wrap"><canvas id="chart"></canvas></div>
+    <div class="scroll" id="series-table" style="flex:none;max-height:46%"></div>
+  </div>
+
+  <div class="page" id="pg-result">
+    <div class="scroll" id="result" style="flex:1 1 auto;display:flex;flex-direction:column"></div>
+    <div id="verdict"><span class="big">no result</span><p>Go needs SNR 10 or better.</p></div>
+  </div>
+</main>
+
+<footer>
+  <button data-key="w" class="go"><kbd>w</kbd>White card<em>A</em></button>
+  <button data-key="y" class="go"><kbd>y</kbd>Yellow card<em>B</em></button>
+  <button data-key="r" class="go"><kbd>r</kbd>Report<em>X</em></button>
+  <button data-key="i"><kbd>i</kbd>Light</button>
+  <button data-key="g"><kbd>g</kbd>Gain</button>
+  <button data-key="c"><kbd>c</kbd>Clear</button>
+  <button class="tab on" data-view="live"><kbd>1</kbd>Live</button>
+  <button class="tab" data-view="series"><kbd>2</kbd>Series</button>
+  <button class="tab" data-view="result"><kbd>3</kbd>Result</button>
+  <button id="shot"><kbd>s</kbd>Screenshot<em>Y</em></button>
+  <button id="fs"><kbd>f</kbd>Full screen</button>
+  <div class="pair">
+    <button id="smaller"><kbd>-</kbd>A</button>
+    <button id="bigger"><kbd>+</kbd>A</button>
+  </div>
+</footer>
+<div id="cd"><div class="ring"></div><div class="num" id="cd-n">3</div>
+  <div class="lbl" id="cd-l">hold still</div></div>
+<div id="toast"></div>
+
+<script>
+const CH = [["C","c","cnt",1400],["R","r","cnt",1400],["G","g","cnt",1400],
+            ["B","b","cnt",1400],["PT-A","pta","mV",3300],["PT-B","ptb","mV",3300]];
+const $ = s => document.querySelector(s);
+const fmt = v => v.toFixed(0);
+const FONT = '"DejaVu Sans Mono","Liberation Mono",monospace';
+const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize);
+
+/* ---------- ui scale ---------- */
+let ui = parseFloat(localStorage.getItem("halo-ui") || "0") || 18;
+function setUi(v){
+  ui = Math.min(40, Math.max(12, v));
+  document.documentElement.style.setProperty("--ui", ui + "px");
+  try{ localStorage.setItem("halo-ui", ui); }catch(e){}
+  sizeCharts();
+  alignBrand();
+  toast("text size " + ui);
+}
+document.documentElement.style.setProperty("--ui", ui + "px");
+$("#bigger").addEventListener("click", () => setUi(ui + 2));
+$("#smaller").addEventListener("click", () => setUi(ui - 2));
+
+/* ---------- views ---------- */
+let manualUntil = 0;
+function show(name, manual){
+  ["live","series","result"].forEach(v => $("#pg-"+v).classList.toggle("on", v === name));
+  document.querySelectorAll("button.tab").forEach(b => b.classList.toggle("on", b.dataset.view === name));
+  $("#v-name").textContent = name;
+  if(manual) manualUntil = Date.now() + 30000;
+  sizeCharts();
+}
+function auto(name){ if(Date.now() > manualUntil) show(name); }
+document.querySelectorAll("button.tab").forEach(b =>
+  b.addEventListener("click", () => show(b.dataset.view, true)));
+
+/* ---------- live ---------- */
+const cells = {};
+$("#chips").innerHTML = CH.map(([n,k,u]) =>
+  `<div class="cch" id="c-${k}"><div class="k">${n}</div>
+     <div class="v"><b id="v-${k}" style="font-weight:400">0</b><span>${u}</span></div></div>`).join("");
+CH.forEach(([n,k]) => cells[k] = {v:$("#v-"+k), box:$("#c-"+k)});
+
+const trail = [];
+let heroKey = "pta";
+function live(o){
+  CH.forEach(([n,k]) => cells[k].v.textContent = fmt(o[k]||0));
+  heroKey = (o.c > 5 || o.b > 5) ? "c" : "pta";
+  const meta = CH.find(c => c[1] === heroKey);
+  const val = o[heroKey] || 0;
+  $("#h-val").textContent = fmt(val);
+  $("#h-unit").textContent = meta[2];
+  $("#h-name").textContent = meta[0] + " live";
+  CH.forEach(([n,k]) => cells[k].box.classList.toggle("hot", k === heroKey));
+  $("#sat").style.visibility = o.sat ? "visible" : "hidden";
+  trail.push(val); if(trail.length > 240) trail.shift();
+  drawLive();
+}
+
+/* ---------- charts ---------- */
+const lv = $("#livechart"), lc = lv.getContext("2d");
+const cv = $("#chart"),     cx = cv.getContext("2d");
+function fit(canvas, ctx, wrapSel){
+  const b = $(wrapSel).getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  if(b.width < 10 || b.height < 10) return false;
+  canvas.width = Math.round(b.width*dpr); canvas.height = Math.round(b.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0); return true;
+}
+function sizeCharts(){
+  if($("#pg-live").classList.contains("on") && fit(lv, lc, "#livewrap")) drawLive();
+  if($("#pg-series").classList.contains("on") && fit(cv, cx, "#wrap")) drawChart();
+}
+addEventListener("resize", sizeCharts);
+
+function niceMax(v){
+  if(v <= 0) return 1;
+  const e = Math.pow(10, Math.floor(Math.log10(v))), m = v/e;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * e;
+}
+function grid(ctx, W, H, L, T, px, py, top, unit, label){
+  ctx.lineWidth = 1; ctx.font = (0.72*rem()) + "px " + FONT;
+  for(let i=0;i<=4;i++){
+    const y = Math.round(T + py - (i/4)*py) + .5;
+    ctx.strokeStyle = i ? "#121820" : "#222A31";
+    ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+px,y); ctx.stroke();
+    ctx.fillStyle = "#8A99A5"; ctx.textAlign = "right";
+    ctx.fillText(fmt(top*i/4), L-.4*rem(), y + .25*rem());
+  }
+  ctx.save(); ctx.translate(.75*rem(), T+py/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign = "center"; ctx.fillStyle = "#8A99A5";
+  ctx.fillText(label + " / " + unit, 0, 0); ctx.restore();
+}
+
+function drawLive(){
+  const dpr = window.devicePixelRatio || 1, W = lv.width/dpr, H = lv.height/dpr;
+  if(W < 10) return;
+  const L = 3.2*rem(), T = .5*rem(), B = .6*rem(), R = .6*rem();
+  const px = W-L-R, py = H-T-B;
+  lc.clearRect(0,0,W,H);
+  const meta = CH.find(c => c[1] === heroKey);
+  const top = niceMax(Math.max(...trail, 1) * 1.15);
+  grid(lc, W, H, L, T, px, py, top, meta[2], meta[0]);
+  if(trail.length < 2) return;
+  const X = i => L + (i/(trail.length-1))*px;
+  const Y = v => T + py - (v/top)*py;
+  lc.beginPath(); lc.moveTo(X(0), T+py);
+  trail.forEach((v,i) => lc.lineTo(X(i), Y(v)));
+  lc.lineTo(X(trail.length-1), T+py); lc.closePath();
+  lc.fillStyle = "rgba(0,159,227,.10)"; lc.fill();
+  lc.shadowColor = "#009FE3"; lc.shadowBlur = .5*rem();
+  lc.strokeStyle = "#009FE3"; lc.lineWidth = 2; lc.lineJoin = "round";
+  lc.beginPath();
+  trail.forEach((v,i) => i ? lc.lineTo(X(i), Y(v)) : lc.moveTo(X(i), Y(v)));
+  lc.stroke(); lc.shadowBlur = 0;
+  lc.fillStyle = "#009FE3"; lc.beginPath();
+  lc.arc(X(trail.length-1), Y(trail[trail.length-1]), .18*rem(), 0, 6.283); lc.fill();
+}
+
+let run = null;
+function drawChart(){
+  const dpr = window.devicePixelRatio || 1, W = cv.width/dpr, H = cv.height/dpr;
+  if(W < 10) return;
+  const L = 3.2*rem(), T = .4*rem(), B = 1.2*rem(), R = .6*rem();
+  const px = W-L-R, py = H-T-B;
+  cx.clearRect(0,0,W,H);
+  const top = niceMax(run ? run.max*1.12 : 1);
+  grid(cx, W, H, L, T, px, py, top, run ? run.unit : "mV", run ? run.name : "PT-A");
+
+  const half = px/2;
+  cx.strokeStyle = "#222A31";
+  cx.beginPath(); cx.moveTo(L+half+.5,T); cx.lineTo(L+half+.5,T+py); cx.stroke();
+  cx.beginPath(); cx.moveTo(L+.5,T+py+.5); cx.lineTo(L+px,T+py+.5); cx.stroke();
+  cx.font = (.72*rem()) + "px " + FONT; cx.textAlign = "left";
+  cx.fillStyle = "#009FE3"; cx.fillText("LED on", L+.4*rem(), T+.9*rem());
+  cx.fillStyle = "#8A99A5"; cx.fillText("LED off", L+half+.4*rem(), T+.9*rem());
+  cx.textAlign = "center";
+  [0,25,50].forEach(n => [0,1].forEach(k => {
+    const x = L + k*half + (n/50)*(half-.7*rem()) + .35*rem();
+    cx.strokeStyle = "#121820";
+    cx.beginPath(); cx.moveTo(x+.5,T); cx.lineTo(x+.5,T+py); cx.stroke();
+    cx.fillStyle = "#8A99A5"; cx.fillText(String(n), x, H-.25*rem());
+  }));
+
+  if(!run || !run.pts.length) return;
+  const colour = run.target === "yellow" ? "#FCB803" : "#F1EFE8";
+  [0,1].forEach(k => {
+    const xs = run.pts.filter(p => p.led === (k?0:1));
+    if(!xs.length) return;
+    const c = k ? "#8A99A5" : colour;
+    const X = i => L + k*half + (i/49)*(half-.7*rem()) + .35*rem();
+    const Y = v => T + py - (v/top)*py;
+    cx.beginPath(); cx.moveTo(X(0), T+py);
+    xs.forEach((p,i) => cx.lineTo(X(i), Y(p.v)));
+    cx.lineTo(X(xs.length-1), T+py); cx.closePath();
+    cx.fillStyle = k ? "rgba(138,153,165,.07)"
+      : (run.target === "yellow" ? "rgba(252,184,3,.10)" : "rgba(241,239,232,.10)");
+    cx.fill();
+    cx.shadowColor = c; cx.shadowBlur = k ? 0 : .55*rem();
+    cx.strokeStyle = c; cx.lineWidth = 2; cx.lineJoin = "round";
+    cx.beginPath();
+    xs.forEach((p,i) => i ? cx.lineTo(X(i), Y(p.v)) : cx.moveTo(X(i), Y(p.v)));
+    cx.stroke(); cx.shadowBlur = 0;
+    const mean = xs.reduce((a,p)=>a+p.v,0)/xs.length;
+    cx.setLineDash([4,4]); cx.lineWidth = 1; cx.globalAlpha = .5; cx.strokeStyle = c;
+    cx.beginPath(); cx.moveTo(L+k*half+.35*rem(), Y(mean));
+    cx.lineTo(L+k*half+half-.35*rem(), Y(mean)); cx.stroke();
+    cx.setLineDash([]); cx.globalAlpha = 1;
+    cx.fillStyle = c; cx.textAlign = "right";
+    cx.fillText(fmt(mean), L+k*half+half-.4*rem(), Y(mean)-.35*rem());
+    if(k === (run.pts[run.pts.length-1].led ? 0 : 1)){
+      const last = xs.length-1;
+      cx.beginPath(); cx.arc(X(last), Y(xs[last].v), .18*rem(), 0, 6.283); cx.fill();
+    }
+  });
+}
+
+/* ---------- run flow ---------- */
+const done = {white:false, yellow:false};
+function steps(){
+  return `<div class="steps">
+    <div class="step ${done.white?"done":""}"><u>w</u>White card under the sensor, then measure</div>
+    <div class="step ${done.yellow?"done":""}"><u>y</u>Swap to the yellow card, then measure</div>
+    <div class="step"><u>r</u>Report the contrast and the SNR</div></div>`;
+}
+$("#result").innerHTML = steps();
+
+function startRun(o){
+  run = {target:o.target, name:"PT-A", key:"pta", unit:"mV", pts:[], max:1, chosen:false};
+  $("#count").textContent = "0 / 100";
+  $("#prog>div").style.width = "0%";
+  $("#series-table").innerHTML = "";
+  document.body.classList.add("busy");
+  show("series");
+}
+function sample(o){
+  if(!run) return;
+  if(!run.chosen && (o.c > 5 || o.pta > 200)){
+    const hero = o.c > 5 ? ["C","c","cnt"] : ["PT-A","pta","mV"];
+    run.name = hero[0]; run.key = hero[1]; run.unit = hero[2]; run.chosen = true;
+  }
+  const v = o[run.key] || 0;
+  run.pts.push({led:o.led, v}); run.max = Math.max(run.max, v);
+  $("#count").textContent = run.pts.length + " / 100";
+  $("#prog>div").style.width = run.pts.length + "%";
+  $("#led").classList.toggle("on", !!o.led);
+  document.body.classList.toggle("lit", !!o.led);
+  drawChart();
+}
+function series(o){
+  $("#led").classList.remove("on");
+  document.body.classList.remove("busy","lit");
+  done[o.target] = true;
+  if(!$("#result").querySelector("table")) $("#result").innerHTML = steps();
+  const cls = o.target === "yellow" ? "yellow" : "white";
+  const rows = CH.map(([ch,,unit]) => {
+    const on = o.on[ch]||[0,0], off = o.off[ch]||[0,0];
+    return `<tr><td>${ch}</td><td class="${cls}">${on[0].toFixed(0)}</td><td>${on[1].toFixed(1)}</td>
+      <td>${off[0].toFixed(0)}</td><td class="${cls}">${(o.signal[ch]||0).toFixed(0)}</td>
+      <td>${(o.noise[ch]||0).toFixed(1)}</td><td>${unit}</td></tr>`;
+  }).join("");
+  $("#series-table").innerHTML =
+    `<table><tr><th>ch</th><th>on</th><th>sd</th><th>off</th><th>signal</th><th>noise</th><th></th></tr>${rows}</table>` +
+    (o.saturated ? `<p class="note" style="color:var(--needle)">Saturated, lower the gain.</p>` : "") +
+    (o.file ? `<p class="note">Saved ${o.file}</p>` : "");
+  toast(o.target + " card measured");
+}
+function report(o){
+  if(o.empty){ $("#result").innerHTML = steps(); auto("result"); return; }
+  const rows = o.channels.map(r => `<tr class="${r.go?"":"off"}"><td>${r.ch}</td>
+    <td class="white">${r.white.toFixed(0)}</td><td class="yellow">${r.yellow.toFixed(0)}</td>
+    <td>${(r.contrast*100).toFixed(0)} %</td><td class="${r.go?"go":""}">${r.snr.toFixed(1)}</td>
+    <td>${r.unit}</td></tr>`).join("");
+  $("#result").innerHTML =
+    `<table><tr><th>ch</th><th>white</th><th>yellow</th><th>contrast</th><th>SNR</th><th></th></tr>${rows}</table>` +
+    (o.file ? `<p class="note">Saved ${o.file}</p>` : "");
+  $("#verdict").innerHTML = o.go
+    ? `<span class="big go">go</span><p>${o.best}, SNR ${o.best_snr.toFixed(1)}. The needle is separable from the dial.</p>`
+    : `<span class="big">no go</span><p>${o.best}, SNR ${o.best_snr.toFixed(1)}, below 10. More light or another wavelength.</p>`;
+  auto("result");
+}
+
+function toast(t){ const e=$("#toast"); e.textContent=t; e.classList.add("show");
+  clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("show"),2400); }
+
+/* ---------- transport ---------- */
+let gotHello = false;
+const es = new EventSource("/events");
+es.onmessage = ev => {
+  const o = JSON.parse(ev.data);
+  switch(o.type){
+    case "link":
+      document.body.classList.toggle("up", !!o.connected);
+      $("#s-link").textContent = o.connected ? o.port : o.port + " down";
+      break;
+    case "hello":
+      gotHello = true;
+      $("#h-fw").textContent = (o.fw || "unknown") + (o.tcs ? "" : ", no colour sensor");
+      if(o.light) $("#s-light").textContent = o.light;
+      if(o.gain) $("#s-gain").textContent = o.gain;
+      break;
+    case "ack": $("#s-light").textContent = o.light; $("#s-gain").textContent = o.gain; break;
+    case "live": live(o); break;
+    case "run": startRun(o); break;
+    case "sample": sample(o); break;
+    case "series": series(o); break;
+    case "report": report(o); break;
+    case "error": toast(o.msg); break;
+  }
+};
+es.onerror = () => { document.body.classList.remove("up"); $("#s-link").textContent = "server lost"; };
+
+function send(key){
+  fetch("/cmd",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})})
+    .then(r=>r.json()).then(r=>{ if(!r.ok) toast("no link to the board"); })
+    .catch(()=>toast("server not reachable"));
+}
+let counting = false;
+function armed(key){
+  // the show, and the moment to take your hand off the rig
+  if(counting) return;
+  counting = true;
+  const cd = $("#cd"), n = $("#cd-n"), l = $("#cd-l");
+  l.textContent = key === "y" ? "yellow card, hold still" : "white card, hold still";
+  cd.classList.add("on");
+  send("k");                       // the board counts down on its own display
+  let i = 3;
+  const step = () => {
+    n.classList.remove("go");
+    n.textContent = i;
+    n.style.animation = "none"; void n.offsetWidth; n.style.animation = "";
+    if(i-- > 1) return setTimeout(step, 1000);
+    setTimeout(() => {
+      n.classList.add("go");
+      n.textContent = "MEASURING";
+      n.style.animation = "none"; void n.offsetWidth; n.style.animation = "";
+      l.textContent = "beam 470 nm, differential mode";
+      send(key);
+      setTimeout(() => {
+        cd.style.transition = "opacity .45s";
+        cd.style.opacity = "0";
+        setTimeout(() => {
+          cd.classList.remove("on");
+          cd.style.opacity = ""; cd.style.transition = "";
+          counting = false;
+        }, 450);
+      }, 700);
+    }, 1000);
+  };
+  step();
+}
+function command(key){ (key === "w" || key === "y") ? armed(key) : send(key); }
+document.querySelectorAll("footer button[data-key]").forEach(b =>
+  b.addEventListener("click", () => command(b.dataset.key)));
+
+function pushMeta(){
+  const ap = $("#ap").value.trim() || "none";
+  fetch("/meta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({aperture:ap})});
+}
+$("#ap").addEventListener("change", pushMeta);
+$("#shot").addEventListener("click", () =>
+  fetch("/shot",{method:"POST"}).then(r=>r.json())
+    .then(r=>toast(r.ok ? "saved " + r.path : "screenshot: " + r.error)));
+$("#fs").addEventListener("click", () => {
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(()=>toast("full screen refused"));
+});
+
+addEventListener("keydown", e => {
+  if(e.target.tagName === "INPUT" || e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = e.key.toLowerCase();
+  if("wyrigc".includes(k)){ e.preventDefault(); command(k); }
+  else if(k === "s"){ e.preventDefault(); $("#shot").click(); }
+  else if(k === "f"){ e.preventDefault(); $("#fs").click(); }
+  else if(k === "1"){ show("live", true); }
+  else if(k === "2"){ show("series", true); }
+  else if(k === "3"){ show("result", true); }
+  else if(k === "+" || k === "="){ setUi(ui + 2); }
+  else if(k === "-"){ setUi(ui - 2); }
+});
+
+/* ---------- uConsole game buttons ----------
+   ABXY are wired as a gamepad, not as keys, so the browser reads them directly.
+   Index order can differ per firmware, so an unmapped button says which one it
+   was instead of doing nothing. */
+const PAD = { 0:"w", 1:"y", 2:"r", 3:"s" };      // A, B, X, Y
+const PAD_NAME = { 0:"A white", 1:"B yellow", 2:"X report", 3:"Y screenshot" };
+const DPAD = { 12:"size+", 13:"size-", 14:"view-", 15:"view+" };
+const VIEWS = ["live","series","result"];
+let padPrev = [], padSeen = false;
+
+function padTick(){
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for(const p of pads){
+    if(!p) continue;
+    if(!padSeen){ padSeen = true; toast("game buttons ready: " + p.id.slice(0,28)); }
+    p.buttons.forEach((b,i) => {
+      const now = b.pressed || b.value > .5;
+      if(now && !padPrev[i]){
+        if(PAD[i] === "s") $("#shot").click();
+        else if(PAD[i]) command(PAD[i]);
+        else if(DPAD[i] === "size+") setUi(ui + 2);
+        else if(DPAD[i] === "size-") setUi(ui - 2);
+        else if(DPAD[i]){
+          const cur = VIEWS.indexOf($("#v-name").textContent);
+          const next = (cur + (DPAD[i] === "view+" ? 1 : 2)) % 3;
+          show(VIEWS[next], true);
+        }
+        else toast("button " + i + " is not mapped yet");
+      }
+      padPrev[i] = now;
+    });
+    // the d-pad may also arrive as an axis pair
+    if(p.axes && p.axes.length >= 2){
+      const ax = Math.round(p.axes[0]), ay = Math.round(p.axes[1]);
+      if(ax !== padPrev.ax){
+        if(ax === 1 || ax === -1){
+          const cur = VIEWS.indexOf($("#v-name").textContent);
+          show(VIEWS[(cur + (ax > 0 ? 1 : 2)) % 3], true);
+        }
+        padPrev.ax = ax;
+      }
+      if(ay !== padPrev.ay){
+        if(ay === -1) setUi(ui + 2);
+        if(ay === 1) setUi(ui - 2);
+        padPrev.ay = ay;
+      }
+    }
+  }
+  requestAnimationFrame(padTick);
+}
+addEventListener("gamepadconnected", e => toast("game pad: " + e.gamepad.id.slice(0,30)));
+requestAnimationFrame(padTick);
+
+setInterval(() => { if(!gotHello) send("p"); }, 3000);
+function alignBrand(){
+  const m = $("#mark"), b = $("#sub");
+  m.style.letterSpacing = "0"; b.style.letterSpacing = "0";
+  const wm = m.getBoundingClientRect().width, wb = b.getBoundingClientRect().width;
+  if(!wm || !wb) return;
+  // stretch the shorter line with letter spacing until both lines are flush
+  if(wm >= wb) b.style.letterSpacing = ((wm - wb) / (b.textContent.length - 1)) + "px";
+  else         m.style.letterSpacing = ((wb - wm) / (m.textContent.length - 1)) + "px";
+}
+addEventListener("resize", alignBrand);
+requestAnimationFrame(() => { sizeCharts(); alignBrand(); });
+</script>
+</body>
+</html>
