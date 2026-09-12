@@ -236,16 +236,17 @@ button:focus-visible{outline:2px solid var(--beam);outline-offset:1px}
 button kbd{font:inherit;color:var(--beam);flex:none;opacity:.85}
 button em{font-style:normal;font-size:.68em;color:var(--dim);border:1px solid var(--line);
   padding:0 .3em;flex:none}
-button.tab.on em{color:var(--bg);border-color:rgba(7,9,11,.4)}
+button.tab.on em{color:var(--beam);border-color:rgba(0,159,227,.4)}
 
 /* the three that trigger a measurement carry the beam colour */
 button.go{color:var(--ink);border-color:var(--beam-dim)}
 button.go:hover{border-color:var(--beam);background:#10222B}
 
 /* the active view is filled, not just outlined, so it reads at a glance */
-button.tab.on{color:var(--bg);background:var(--beam);border-color:var(--beam)}
-button.tab.on kbd{color:var(--bg);opacity:.7}
-button.tab.on:hover{background:#00B4FF;color:var(--bg)}
+button.tab.on{color:var(--beam);background:#0C1E28;border-color:var(--beam);
+  box-shadow:inset 0 0 0 1px rgba(0,159,227,.35),0 0 .55rem rgba(0,159,227,.18)}
+button.tab.on kbd{color:var(--dial);opacity:1}
+button.tab.on:hover{background:#102936;color:var(--beam)}
 
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;min-width:0}
 .chip input{font-family:var(--mono);font-size:.95rem;color:var(--needle);background:transparent;
@@ -263,43 +264,37 @@ button.tab.on:hover{background:#00B4FF;color:var(--bg)}
 #cd .ring{position:absolute;width:min(58vh,58vw);height:min(58vh,58vw);border-radius:50%;
   border:2px solid var(--beam-dim);border-top-color:var(--beam);animation:spin 1.1s linear infinite}
 @keyframes tick{from{transform:scale(1.7);opacity:0}60%{opacity:1}to{transform:scale(1);opacity:1}}
-/* a light travels across the footer every few seconds, like a bus being polled */
-footer{position:relative;overflow:hidden}
-footer::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
-  background:linear-gradient(105deg,transparent 0%,transparent 40%,
-    rgba(0,159,227,.035) 46%,rgba(0,159,227,.16) 50%,rgba(0,159,227,.035) 54%,
-    transparent 60%,transparent 100%);
-  background-size:260% 100%;background-position:180% 0;
-  animation:sweep 6.5s cubic-bezier(.45,0,.2,1) infinite}
-@keyframes sweep{0%{background-position:180% 0}28%,100%{background-position:-80% 0}}
+/* the footer is polled like a bus: one cell lights at a time, the two rows
+   running in opposite directions, and the direction flips every pass */
+footer{position:relative}
+button.ping, .pair.ping{animation:ping .42s ease-out}
+@keyframes ping{
+  0%  {box-shadow:inset 0 0 0 0 rgba(0,159,227,0);border-color:var(--line)}
+  22% {box-shadow:inset 0 0 1.4rem -.2rem rgba(0,159,227,.55),0 0 .5rem rgba(0,159,227,.3);
+       border-color:var(--beam)}
+  100%{box-shadow:inset 0 0 0 0 rgba(0,159,227,0)}
+}
+button.go.ping{animation:pinggo .42s ease-out}
+@keyframes pinggo{
+  0%  {box-shadow:none}
+  22% {box-shadow:inset 0 0 1.6rem -.2rem rgba(252,184,3,.4),0 0 .6rem rgba(0,159,227,.35);
+       border-color:var(--beam)}
+  100%{box-shadow:none}
+}
 
-/* full screen glitch, one of six flavours picked at random by the script */
+/* full screen glitch. the displacement and the channel split are real SVG
+   filters, so the picture is actually torn and not just covered up. */
 #fx{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
 #fx.on{opacity:1}
-#fx .band{position:absolute;left:0;right:0;background:rgba(0,159,227,.16);
-  mix-blend-mode:screen;box-shadow:0 0 2rem rgba(0,159,227,.35)}
-#fx .tear{position:absolute;left:0;right:0;background:var(--bg);border-top:1px solid var(--beam);
-  border-bottom:1px solid rgba(252,184,3,.6)}
-#fx .scan{position:absolute;left:0;right:0;height:35%;
-  background:repeating-linear-gradient(180deg,rgba(0,159,227,.10) 0 1px,transparent 1px 3px)}
-#fx .flash{position:absolute;inset:0;background:var(--beam);opacity:.10}
-#fx .rgb{position:absolute;inset:0;backdrop-filter:hue-rotate(35deg) contrast(1.25)}
-body.fx-shift main{animation:shiftx .42s steps(1,end)}
-body.fx-shift header{animation:shiftx .42s steps(1,end) reverse}
-@keyframes shiftx{
-  0%{transform:none}18%{transform:translateX(-6px)}
-  34%{transform:translateX(5px)}52%{transform:translateX(-3px)}
-  70%{transform:translateX(2px)}100%{transform:none}
-}
-body.fx-squeeze main{animation:squeeze .38s ease-out}
-@keyframes squeeze{
-  0%{transform:none;filter:none}
-  30%{transform:scaleY(1.015) scaleX(.995);filter:brightness(1.35)}
-  60%{transform:scaleY(.99) scaleX(1.004);filter:brightness(.85)}
-  100%{transform:none;filter:none}
-}
+#fx .scan{position:absolute;left:0;right:0;height:28%;
+  background:repeating-linear-gradient(180deg,rgba(0,159,227,.14) 0 1px,transparent 1px 3px);
+  box-shadow:0 0 3rem rgba(0,159,227,.25)}
+#fx .dark{position:absolute;inset:0;background:#000;opacity:.55}
+#fx .line{position:absolute;left:0;right:0;height:2px;background:var(--beam);
+  box-shadow:0 0 1.2rem var(--beam)}
+body.fx-drop main,body.fx-drop header,body.fx-drop footer{filter:contrast(1.6) saturate(.15) brightness(.8)}
 @media (prefers-reduced-motion:reduce){
-  footer::after{animation:none;opacity:0}
+  button.ping,.pair.ping{animation:none}
   #fx{display:none}
 }
 
@@ -429,6 +424,36 @@ body.fx-squeeze main{animation:squeeze .38s ease-out}
 </footer>
 <div id="cd"><div class="ring"></div><div class="num" id="cd-n">3</div>
   <div class="lbl" id="cd-l">hold still</div></div>
+<svg id="fxdefs" width="0" height="0" aria-hidden="true" style="position:absolute">
+  <filter id="fx-disp" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence id="fx-turb" type="fractalNoise" baseFrequency="0.000001 0.03"
+                  numOctaves="1" seed="3" result="noise"/>
+    <feDisplacementMap id="fx-map" in="SourceGraphic" in2="noise" scale="0"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="fx-rgb" x="-20%" y="-20%" width="140%" height="140%">
+    <feOffset id="fx-off-r" in="SourceGraphic" dx="0" dy="0" result="ro"/>
+    <feColorMatrix in="ro" type="matrix" result="rc"
+      values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
+    <feOffset id="fx-off-c" in="SourceGraphic" dx="0" dy="0" result="co"/>
+    <feColorMatrix in="co" type="matrix" result="cc"
+      values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    <feBlend in="rc" in2="cc" mode="screen"/>
+  </filter>
+  <filter id="fx-both" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence id="fx-turb2" type="fractalNoise" baseFrequency="0.000001 0.05"
+                  numOctaves="1" seed="7" result="n2"/>
+    <feDisplacementMap id="fx-map2" in="SourceGraphic" in2="n2" scale="0"
+                       xChannelSelector="R" yChannelSelector="G" result="d2"/>
+    <feOffset id="fx-off-r2" in="d2" dx="0" dy="0" result="ro2"/>
+    <feColorMatrix in="ro2" type="matrix" result="rc2"
+      values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
+    <feOffset id="fx-off-c2" in="d2" dx="0" dy="0" result="co2"/>
+    <feColorMatrix in="co2" type="matrix" result="cc2"
+      values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    <feBlend in="rc2" in2="cc2" mode="screen"/>
+  </filter>
+</svg>
 <div id="fx"></div>
 <div id="toast"></div>
 
@@ -979,67 +1004,113 @@ function measurePoint(){
 
 loadAll();
 
+/* ---------- footer ping ----------
+   Every pass the two rows are walked in opposite directions, and the
+   directions swap on the next pass. */
+const CELLS = Array.from(document.querySelectorAll("footer > button, footer > .pair"));
+let pingFlip = false;
+function pingRun(){
+  const half = Math.ceil(CELLS.length / 2);
+  const top = CELLS.slice(0, half), bottom = CELLS.slice(half);
+  const a = pingFlip ? top.slice().reverse() : top;
+  const b = pingFlip ? bottom : bottom.slice().reverse();
+  pingFlip = !pingFlip;
+  const step = 52;
+  a.forEach((el, i) => setTimeout(() => flash(el), i * step));
+  b.forEach((el, i) => setTimeout(() => flash(el), i * step));
+}
+function flash(el){
+  el.classList.remove("ping"); void el.offsetWidth; el.classList.add("ping");
+  setTimeout(() => el.classList.remove("ping"), 460);
+}
+setInterval(pingRun, 7400);
+setTimeout(pingRun, 1800);
+
 /* ---------- glitch director ----------
-   Six short effects, never the same one twice in a row, one every five to
-   eight seconds. Each lasts under half a second so it reads as a flicker in
-   the equipment and not as a broken page. */
+   Four effects built on real SVG filters, so the picture is displaced and the
+   colour channels are separated for real. One every five to eight seconds,
+   never the same twice running, each under half a second. */
 const fx = $("#fx");
 const rnd = (a, b) => a + Math.random() * (b - a);
+const SURF = [document.querySelector("header"), document.querySelector("main"),
+              document.querySelector("footer")];
 
-function fxBands(){
-  const n = Math.round(rnd(3, 7));
-  fx.innerHTML = Array.from({length: n}, () => {
-    const top = rnd(0, 88), h = rnd(1.5, 9);
-    return `<div class="band" style="top:${top}%;height:${h}%;
-      transform:translateX(${rnd(-14,14)}px)"></div>`;
-  }).join("");
-  return 280;
+function surface(filter){ SURF.forEach(el => el.style.filter = filter || ""); }
+
+function ramp(ms, fn, done){
+  const t0 = performance.now();
+  (function step(now){
+    const t = Math.min(1, (now - t0) / ms);
+    fn(t);
+    if(t < 1) requestAnimationFrame(step); else done && done();
+  })(performance.now());
 }
+const bell = t => Math.sin(Math.PI * t);           // 0 up to 1 and back to 0
+
 function fxTear(){
-  const top = rnd(12, 70), h = rnd(4, 14);
-  fx.innerHTML = `<div class="tear" style="top:${top}%;height:${h}%;
-    transform:translateX(${rnd(-24,24)}px)"></div>`;
-  return 200;
-}
-function fxScan(){
-  fx.innerHTML = `<div class="scan" style="top:-35%;animation:none"></div>`;
-  const el = fx.firstChild;
-  el.animate([{top:"-35%"},{top:"100%"}], {duration:420, easing:"cubic-bezier(.4,0,.7,1)"});
-  return 430;
-}
-function fxFlash(){
-  fx.innerHTML = `<div class="flash"></div>`;
-  return 90;
-}
-function fxRgb(){
-  fx.innerHTML = `<div class="rgb"></div>`;
-  return 160;
-}
-function fxShift(){
-  fx.innerHTML = `<div class="band" style="top:${rnd(20,60)}%;height:3%"></div>`;
-  document.body.classList.add("fx-shift");
-  setTimeout(() => document.body.classList.remove("fx-shift"), 440);
-  return 240;
-}
-function fxSqueeze(){
-  fx.innerHTML = "";
-  document.body.classList.add("fx-squeeze");
-  setTimeout(() => document.body.classList.remove("fx-squeeze"), 400);
+  const turb = $("#fx-turb"), map = $("#fx-map");
+  turb.setAttribute("baseFrequency", "0.000001 " + rnd(0.02, 0.06).toFixed(4));
+  surface("url(#fx-disp)");
+  ramp(340, t => {
+    map.setAttribute("scale", (bell(t) * rnd(26, 46)).toFixed(1));
+    if(Math.random() < 0.35) turb.setAttribute("seed", Math.floor(rnd(1, 99)));
+  }, () => { surface(""); map.setAttribute("scale", 0); });
   return 0;
 }
-const FX = [fxBands, fxTear, fxScan, fxFlash, fxRgb, fxShift, fxSqueeze];
-let fxLast = -1;
 
+function fxChroma(){
+  const r = $("#fx-off-r"), c = $("#fx-off-c");
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  surface("url(#fx-rgb)");
+  ramp(280, t => {
+    const d = bell(t) * rnd(4, 9) * dir;
+    r.setAttribute("dx", d.toFixed(1));
+    c.setAttribute("dx", (-d).toFixed(1));
+    r.setAttribute("dy", (bell(t) * rnd(-1.5, 1.5)).toFixed(1));
+  }, () => { surface(""); r.setAttribute("dx", 0); c.setAttribute("dx", 0); r.setAttribute("dy", 0); });
+  return 0;
+}
+
+function fxBoth(){
+  const turb = $("#fx-turb2"), map = $("#fx-map2"),
+        r = $("#fx-off-r2"), c = $("#fx-off-c2");
+  turb.setAttribute("baseFrequency", "0.000001 " + rnd(0.03, 0.08).toFixed(4));
+  surface("url(#fx-both)");
+  fx.innerHTML = `<div class="line" style="top:${rnd(15,80)}%"></div>`;
+  fx.classList.add("on");
+  ramp(420, t => {
+    map.setAttribute("scale", (bell(t) * rnd(30, 60)).toFixed(1));
+    const d = bell(t) * rnd(5, 11);
+    r.setAttribute("dx", d.toFixed(1));
+    c.setAttribute("dx", (-d).toFixed(1));
+    if(Math.random() < 0.5) turb.setAttribute("seed", Math.floor(rnd(1, 99)));
+  }, () => { surface(""); map.setAttribute("scale", 0);
+             r.setAttribute("dx", 0); c.setAttribute("dx", 0);
+             fx.classList.remove("on"); fx.innerHTML = ""; });
+  return 0;
+}
+
+function fxDropout(){
+  // the signal drops for two frames, comes back grey, then settles
+  document.body.classList.add("fx-drop");
+  fx.innerHTML = `<div class="dark"></div><div class="scan" style="top:${rnd(-10,70)}%"></div>`;
+  fx.classList.add("on");
+  setTimeout(() => { fx.querySelector(".dark").style.opacity = ".15"; }, 70);
+  setTimeout(() => {
+    document.body.classList.remove("fx-drop");
+    fx.classList.remove("on"); fx.innerHTML = "";
+  }, 260);
+  return 0;
+}
+
+const FX = [fxTear, fxChroma, fxBoth, fxDropout];
+let fxLast = -1;
 function fxOnce(){
-  if(counting) return schedule();          // never during the countdown
+  if(counting) return schedule();
   let i;
-  do { i = Math.floor(Math.random() * FX.length); } while(i === fxLast && FX.length > 1);
+  do { i = Math.floor(Math.random() * FX.length); } while(i === fxLast);
   fxLast = i;
-  const ms = FX[i]();
-  if(ms){
-    fx.classList.add("on");
-    setTimeout(() => { fx.classList.remove("on"); fx.innerHTML = ""; }, ms);
-  }
+  FX[i]();
   schedule();
 }
 function schedule(){ setTimeout(fxOnce, rnd(5000, 8000)); }
