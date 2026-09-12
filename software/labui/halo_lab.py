@@ -28,6 +28,7 @@ import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from db import Store
 
 HERE = os.path.dirname(os.path.abspath(__file__))
