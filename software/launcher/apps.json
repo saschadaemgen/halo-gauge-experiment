@@ -1,0 +1,52 @@
+{
+  "title": "CYB3RGUN",
+  "subtitle": "RESEARCH TERMINAL",
+  "apps": [
+    {
+      "key": "1",
+      "name": "HALO LAB",
+      "line": "optical gauge probe",
+      "detail": "contrast, needle sweep, campaigns",
+      "url": "http://127.0.0.1:8760",
+      "check": "127.0.0.1:8760",
+      "service": "halo-lab"
+    },
+    {
+      "key": "2",
+      "name": "ARCHIVE",
+      "line": "measurement data",
+      "detail": "raw series, reports, exports",
+      "open": "docs/log/data"
+    },
+    {
+      "key": "3",
+      "name": "FIRMWARE",
+      "line": "probe over the air",
+      "detail": "flash the board without a cable",
+      "soon": true
+    },
+    {
+      "key": "4",
+      "name": "RANGE",
+      "line": "laser tag arena",
+      "detail": "targets, scoring, sessions",
+      "soon": true
+    },
+    {
+      "key": "5",
+      "name": "ARMORY",
+      "line": "weapon definitions",
+      "detail": "fire control, energy, attachments",
+      "soon": true
+    },
+    {
+      "key": "6",
+      "name": "TERMINAL",
+      "line": "shell",
+      "detail": "everything the menu does not cover",
+      "run": [
+        "x-terminal-emulator"
+      ]
+    }
+  ]
+}

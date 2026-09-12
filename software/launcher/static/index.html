@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CYB3RGUN</title>
+<style>
+:root{
+  --ui:18px;
+  --bg:#07090B; --panel:#0F1317; --line:#222A31; --ink:#DDE6EC; --dim:#8A99A5;
+  --beam:#009FE3; --beam-dim:#0A5C82; --needle:#FCB803; --dial:#F1EFE8; --alarm:#E2483F;
+  --mono:"DejaVu Sans Mono","Liberation Mono","Consolas",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;scrollbar-width:thin;scrollbar-color:#2B343C #0B0F12}
+*::-webkit-scrollbar{width:.5rem;height:.5rem}
+*::-webkit-scrollbar-track{background:#0B0F12}
+*::-webkit-scrollbar-thumb{background:#2B343C;border:1px solid var(--line)}
+html{font-size:var(--ui)}
+body{width:100%;height:100vh;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:var(--mono);font-size:1rem;line-height:1.3;-webkit-font-smoothing:antialiased;
+  display:grid;grid-template-rows:auto 1fr auto;position:relative}
+
+/* ---------- frame ---------- */
+header{display:flex;align-items:center;gap:1rem;padding:.8rem 1rem;border-bottom:1px solid var(--line)}
+#logo{width:4.6rem;height:4.6rem;flex:none;overflow:visible}
+#logo *{transform-box:view-box;transform-origin:522px 521px}
+#lg-fill{fill:var(--beam);animation:swing 6.5s ease-in-out infinite}
+#lg-ring{fill:none;stroke:var(--dial);stroke-width:40.3;stroke-miterlimit:10}
+#lg-core{fill:var(--beam);animation:core 3.4s ease-in-out infinite}
+@keyframes swing{
+  0%{transform:rotate(0)}8%{transform:rotate(19deg)}14%{transform:rotate(12deg)}
+  19%{transform:rotate(15deg)}24%{transform:rotate(14deg)}40%{transform:rotate(14deg)}
+  50%{transform:rotate(-17deg)}56%{transform:rotate(-10deg)}61%{transform:rotate(-13deg)}
+  66%{transform:rotate(-12deg)}82%{transform:rotate(-12deg)}92%{transform:rotate(3deg)}
+  96%{transform:rotate(-1deg)}100%{transform:rotate(0)}}
+@keyframes core{0%,100%{transform:scale(.7);opacity:.35}50%{transform:scale(1.08);opacity:1}}
+.names{display:flex;flex-direction:column;gap:.2rem}
+.mark{font-size:2rem;letter-spacing:.2em;color:var(--dial);position:relative;display:inline-block}
+.mark::before,.mark::after{content:attr(data-text);position:absolute;left:0;top:0;
+  letter-spacing:inherit;background:var(--bg);opacity:0;white-space:nowrap}
+.mark::before{color:var(--beam);animation:glA 9s steps(1,end) infinite}
+.mark::after{color:var(--needle);animation:glB 9s steps(1,end) infinite}
+@keyframes glA{0%,90%{opacity:0}91%{opacity:1;transform:translate(-5px,-2px);clip-path:inset(8% 0 62% 0)}
+  92.5%{opacity:1;transform:translate(6px,2px);clip-path:inset(54% 0 18% 0)}
+  94%{opacity:1;transform:translate(-3px,1px);clip-path:inset(30% 0 44% 0)}95%,100%{opacity:0}}
+@keyframes glB{0%,90.5%{opacity:0}91.5%{opacity:.9;transform:translate(5px,2px);clip-path:inset(40% 0 34% 0)}
+  93.5%{opacity:.9;transform:translate(-6px,-2px);clip-path:inset(4% 0 74% 0)}94.5%,100%{opacity:0}}
+.sub{font-size:.9rem;letter-spacing:.42em;color:var(--dim)}
+.meta{margin-left:auto;display:flex;gap:.5rem;align-items:center}
+.chip{background:var(--panel);border:1px solid var(--line);padding:.35rem .6rem;
+  font-size:.85rem;white-space:nowrap}
+.chip b{font-weight:400;color:var(--dim);font-size:.72rem;margin-right:.4rem}
+
+/* ---------- tiles ---------- */
+main{padding:1rem;min-height:0;overflow:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem}
+.tile{position:relative;background:var(--panel);border:1px solid var(--line);
+  padding:.9rem 1rem;cursor:pointer;display:flex;flex-direction:column;gap:.25rem;
+  overflow:hidden;transition:border-color .15s,background .15s,transform .08s}
+.tile:hover{border-color:var(--beam);background:#111A21}
+.tile:active{transform:translateY(1px)}
+.tile:focus-visible{outline:2px solid var(--beam);outline-offset:2px}
+.tile .k{position:absolute;right:.7rem;top:.5rem;font-size:2.6rem;color:#151C22;line-height:1}
+.tile .n{font-size:1.35rem;letter-spacing:.06em;color:var(--dial)}
+.tile .l{font-size:.85rem;color:var(--beam)}
+.tile .d{font-size:.78rem;color:var(--dim)}
+.tile .s{margin-top:.5rem;display:flex;align-items:center;gap:.45rem;font-size:.72rem;color:var(--dim)}
+.tile .s i{width:.5rem;height:.5rem;border-radius:50%;background:#2B343C;flex:none}
+.tile.up .s i{background:var(--beam);box-shadow:0 0 .5rem var(--beam)}
+.tile.up{border-left:3px solid var(--beam);padding-left:calc(1rem - 3px)}
+.tile.soon{opacity:.45;cursor:default}
+.tile.soon:hover{border-color:var(--line);background:var(--panel)}
+.tile.soon .s i{background:var(--needle)}
+
+/* ---------- footer ---------- */
+footer{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;padding:.7rem 1rem;
+  border-top:1px solid var(--line)}
+button{font-family:var(--mono);font-size:1rem;color:var(--dim);background:var(--panel);
+  border:1px solid var(--line);padding:.7rem;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;gap:.5rem}
+button:hover{color:var(--ink);border-color:#33414C;background:#161C22}
+button kbd{font:inherit;color:var(--beam)}
+button.danger:hover{border-color:var(--alarm);color:var(--alarm)}
+button.ping{animation:ping .42s ease-out}
+@keyframes ping{0%{box-shadow:none}22%{box-shadow:inset 0 0 1.4rem -.2rem rgba(0,159,227,.55);
+  border-color:var(--beam)}100%{box-shadow:none}}
+
+/* ---------- boot ---------- */
+#boot{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;overflow:hidden}
+#boot.gone{animation:bootout .45s ease-in forwards}
+#boot.off{display:none}
+.bwrap{display:flex;align-items:center;gap:1.6rem}
+.blogo{width:min(24vh,8rem);height:min(24vh,8rem);overflow:visible;
+  animation:bootlogo 1.5s cubic-bezier(.2,.9,.2,1) both}
+.bfill{fill:var(--beam)}
+.bring{fill:none;stroke:var(--dial);stroke-width:40.3;stroke-miterlimit:10;
+  transform-box:view-box;transform-origin:522px 521px;animation:bootring 1.6s ease-out both}
+.bcore{fill:var(--dial);animation:bootcore 1.1s ease-out .35s both}
+.btxt{display:flex;flex-direction:column;gap:.3rem}
+.bmark{font-size:min(8vh,3rem);letter-spacing:.24em;color:var(--dial);position:relative;
+  animation:bootin .5s .25s both}
+.bmark::before,.bmark::after{content:attr(data-text);position:absolute;left:0;top:0;
+  letter-spacing:inherit;background:var(--bg)}
+.bmark::before{color:var(--beam);animation:glA 1.6s steps(1,end) .3s}
+.bmark::after{color:var(--needle);animation:glB 1.6s steps(1,end) .3s}
+.bsub{font-size:min(2.6vh,1rem);letter-spacing:.45em;color:var(--dim);
+  animation:bootin .5s .45s both}
+.bbar{width:min(48vw,28rem);height:3px;background:#10161B;overflow:hidden}
+.bbar div{height:100%;width:0;background:var(--beam);box-shadow:0 0 .6rem var(--beam);
+  animation:bootbar 1.55s cubic-bezier(.6,0,.15,1) .2s both}
+.blines{position:absolute;left:6vw;bottom:7vh;font-size:min(2vh,.82rem);color:var(--dim);
+  line-height:1.75;text-align:left}
+.blines b{font-weight:400;color:var(--beam)}
+.bscan{position:absolute;left:0;right:0;height:30%;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(0,159,227,.10) 0 1px,transparent 1px 3px);
+  animation:bootscan 1.9s linear both}
+@keyframes bootlogo{from{opacity:0;transform:scale(.4) rotate(-60deg)}to{opacity:1;transform:none}}
+@keyframes bootring{from{stroke-width:170;opacity:0}60%{stroke-width:40.3;opacity:1}}
+@keyframes bootcore{from{transform:scale(3);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes bootin{from{opacity:0;transform:translateY(.5rem)}to{opacity:1;transform:none}}
+@keyframes bootbar{from{width:0}to{width:100%}}
+@keyframes bootscan{from{top:-30%}to{top:100%}}
+@keyframes bootout{to{opacity:0;transform:scale(1.06);filter:brightness(2.4)}}
+
+/* ---------- glitch ---------- */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
+#fx.on{opacity:1}
+#fx .line{position:absolute;left:0;right:0;height:2px;background:var(--beam);
+  box-shadow:0 0 1.2rem var(--beam)}
+#fx .dark{position:absolute;inset:0;background:#000;opacity:.55}
+#fx .scan{position:absolute;left:0;right:0;height:28%;
+  background:repeating-linear-gradient(180deg,rgba(0,159,227,.14) 0 1px,transparent 1px 3px)}
+body.fx-drop header,body.fx-drop main,body.fx-drop footer{filter:contrast(1.6) saturate(.15) brightness(.8)}
+#toast{position:fixed;left:1rem;bottom:5rem;font-size:.9rem;color:var(--ink);
+  background:var(--panel);border:1px solid var(--beam);padding:.55rem .8rem;opacity:0;
+  pointer-events:none;transition:opacity .2s;z-index:70}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}#fx{display:none}}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="bwrap">
+    <svg class="blogo" viewBox="0 0 1024 1024" aria-hidden="true">
+      <path class="bfill" d="M450.6,880.8c-13.2-2.8-30.8-8-53-15.5-22.1-7.5-45.8-18.6-71-33.4-25.2-14.8-49.3-34.1-72.4-58-39.6-40.3-68.3-82.9-86.2-127.9-17.9-45-26.2-90.4-24.7-136.3,1.4-45.9,11.6-90.1,30.7-132.4,19.1-42.4,46-80.9,80.9-115.6,38.6-38.4,80.3-67.5,125-87.1,44.7-19.7,90.3-30.1,136.7-31.3,46.4-1.2,91.6,7,135.6,24.6,44,17.6,84.4,44.6,121.1,81.2,31.1,30.9,55.1,63.2,72,97,16.9,33.7,28.7,64.6,35.3,92.7l-98.9,39.4c-4.2-23-12.1-48.6-23.7-76.9-11.5-28.3-29.5-54.7-54-79-32-31.9-70-52.8-114.1-62.9-44-10.1-88.5-8.9-133.5,3.5-45,12.4-85.3,36.4-121.1,72-36.3,36.1-61.3,75.8-75.2,119.1-13.9,43.3-15.4,86.8-4.6,130.3,10.8,43.6,34.6,83.6,71.3,120.2,26.4,26.2,53.5,45.3,81.6,57.3,28,11.9,53.6,19.1,76.6,21.4l-34.6,97.7h0Z"/><path class="bring" d="M584.6,583.4c-34.3,34.1-89.9,34.1-124.2,0-34.3-34.1-34.3-89.4,0-123.6,34.3-34.1,89.9-34.1,124.2,0,34.3,34.1,34.3,89.4,0,123.6Z"/>
+      <circle class="bcore" cx="522.5" cy="521.6" r="34"/>
+    </svg>
+    <div class="btxt">
+      <span class="bmark" data-text="CYB3RGUN">CYB3RGUN</span>
+      <span class="bsub">RESEARCH TERMINAL</span>
+    </div>
+  </div>
+  <div class="bbar"><div></div></div>
+  <div class="blines" id="blines"></div>
+  <div class="bscan"></div>
+</div>
+
+<svg id="fxdefs" width="0" height="0" aria-hidden="true" style="position:absolute">
+  <filter id="fx-disp" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence id="fx-turb" type="fractalNoise" baseFrequency="0.000001 0.03"
+                  numOctaves="1" seed="3" result="noise"/>
+    <feDisplacementMap id="fx-map" in="SourceGraphic" in2="noise" scale="0"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="fx-rgb" x="-20%" y="-20%" width="140%" height="140%">
+    <feOffset id="fx-off-r" in="SourceGraphic" dx="0" dy="0" result="ro"/>
+    <feColorMatrix in="ro" type="matrix" result="rc"
+      values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
+    <feOffset id="fx-off-c" in="SourceGraphic" dx="0" dy="0" result="co"/>
+    <feColorMatrix in="co" type="matrix" result="cc"
+      values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    <feBlend in="rc" in2="cc" mode="screen"/>
+  </filter>
+</svg>
+<div id="fx"></div>
+
+<header>
+  <svg id="logo" viewBox="0 0 1024 1024" aria-label="CYB3RGUN">
+    <path id="lg-fill" d="M450.6,880.8c-13.2-2.8-30.8-8-53-15.5-22.1-7.5-45.8-18.6-71-33.4-25.2-14.8-49.3-34.1-72.4-58-39.6-40.3-68.3-82.9-86.2-127.9-17.9-45-26.2-90.4-24.7-136.3,1.4-45.9,11.6-90.1,30.7-132.4,19.1-42.4,46-80.9,80.9-115.6,38.6-38.4,80.3-67.5,125-87.1,44.7-19.7,90.3-30.1,136.7-31.3,46.4-1.2,91.6,7,135.6,24.6,44,17.6,84.4,44.6,121.1,81.2,31.1,30.9,55.1,63.2,72,97,16.9,33.7,28.7,64.6,35.3,92.7l-98.9,39.4c-4.2-23-12.1-48.6-23.7-76.9-11.5-28.3-29.5-54.7-54-79-32-31.9-70-52.8-114.1-62.9-44-10.1-88.5-8.9-133.5,3.5-45,12.4-85.3,36.4-121.1,72-36.3,36.1-61.3,75.8-75.2,119.1-13.9,43.3-15.4,86.8-4.6,130.3,10.8,43.6,34.6,83.6,71.3,120.2,26.4,26.2,53.5,45.3,81.6,57.3,28,11.9,53.6,19.1,76.6,21.4l-34.6,97.7h0Z"/><path id="lg-ring" d="M584.6,583.4c-34.3,34.1-89.9,34.1-124.2,0-34.3-34.1-34.3-89.4,0-123.6,34.3-34.1,89.9-34.1,124.2,0,34.3,34.1,34.3,89.4,0,123.6Z"/>
+    <circle id="lg-core" cx="522.5" cy="521.6" r="34"/>
+  </svg>
+  <div class="names">
+    <span class="mark" id="mark" data-text="CYB3RGUN">CYB3RGUN</span>
+    <span class="sub" id="sub">RESEARCH TERMINAL</span>
+  </div>
+  <div class="meta">
+    <span class="chip"><b>host</b><i id="m-host">-</i></span>
+    <span class="chip"><b>net</b><i id="m-ip">-</i></span>
+    <span class="chip"><b>time</b><i id="m-time">-</i></span>
+  </div>
+</header>
+
+<main><div class="grid" id="grid"></div></main>
+
+<footer>
+  <button id="reload"><kbd>r</kbd>Refresh</button>
+  <button id="bigger"><kbd>+</kbd>Text</button>
+  <button id="smaller"><kbd>-</kbd>Text</button>
+  <button id="power" class="danger"><kbd>p</kbd>Power</button>
+</footer>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let ui = parseFloat(localStorage.getItem("cyb-ui") || "0") || 18;
+function setUi(v){
+  ui = Math.min(40, Math.max(12, v));
+  document.documentElement.style.setProperty("--ui", ui + "px");
+  try{ localStorage.setItem("cyb-ui", ui); }catch(e){}
+}
+setUi(ui);
+$("#bigger").onclick = () => setUi(ui + 2);
+$("#smaller").onclick = () => setUi(ui - 2);
+
+function toast(t){ const e=$("#toast"); e.textContent=t; e.classList.add("show");
+  clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("show"),2600); }
+
+/* ---------- boot ---------- */
+const BOOTLINES = [["CORE","aarch64 online"],["DISPLAY","1280 x 720"],
+                   ["NET","link up"],["SERVICES","scanning"],["TERMINAL","ready"]];
+(function boot(){
+  const el = $("#boot"), lines = $("#blines");
+  BOOTLINES.forEach(([k,v],i) => setTimeout(() =>
+    lines.innerHTML += `<div><b>${k}</b>  ${v}</div>`, 180 + i*290));
+  setTimeout(() => el.classList.add("gone"), 1950);
+  setTimeout(() => el.classList.add("off"), 2400);
+})();
+
+/* ---------- apps ---------- */
+let apps = [];
+function render(cfg){
+  apps = cfg.apps || [];
+  $("#mark").textContent = cfg.title || "CYB3RGUN";
+  $("#mark").dataset.text = cfg.title || "CYB3RGUN";
+  $("#sub").textContent = cfg.subtitle || "";
+  $("#m-host").textContent = cfg.host || "-";
+  $("#m-ip").textContent = cfg.ip || "-";
+  $("#m-time").textContent = cfg.time || "-";
+  $("#grid").innerHTML = apps.map(a => `
+    <div class="tile ${a.up ? "up" : ""} ${a.soon ? "soon" : ""}" data-key="${a.key}"
+         tabindex="${a.soon ? -1 : 0}">
+      <span class="k">${a.key}</span>
+      <span class="n">${a.name}</span>
+      <span class="l">${a.line || ""}</span>
+      <span class="d">${a.detail || ""}</span>
+      <span class="s"><i></i>${a.soon ? "in development"
+        : (a.up ? "running" : (a.check ? "stopped" : "ready"))}</span>
+    </div>`).join("");
+  document.querySelectorAll(".tile").forEach(t => {
+    t.onclick = () => launch(t.dataset.key);
+    t.onkeydown = e => { if(e.key === "Enter") launch(t.dataset.key); };
+  });
+}
+function load(){
+  fetch("/api/apps").then(r => r.json()).then(render)
+    .catch(() => toast("launcher service not reachable"));
+}
+function launch(key){
+  const a = apps.find(x => x.key === key);
+  if(!a) return;
+  if(a.soon) return toast(a.name + " is not built yet");
+  fetch("/api/launch", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({key})}).then(r => r.json()).then(r => {
+      if(r.error) return toast(r.error);
+      if(r.url) location.href = r.url;
+      else toast(a.name + " started");
+    }).catch(() => toast("could not start " + a.name));
+}
+$("#reload").onclick = load;
+$("#power").onclick = () => {
+  const what = confirm("OK reboots the terminal, Cancel shuts it down.") ? "reboot" : "off";
+  fetch("/api/power", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({what})});
+  toast(what === "reboot" ? "rebooting" : "shutting down");
+};
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if(/^[1-9]$/.test(k)) launch(k);
+  else if(k === "r") load();
+  else if(k === "p") $("#power").click();
+  else if(k === "+" || k === "=") setUi(ui + 2);
+  else if(k === "-") setUi(ui - 2);
+});
+/* uConsole game buttons: A B X Y pick the first four tiles */
+let padPrev = [];
+(function pad(){
+  for(const p of (navigator.getGamepads ? navigator.getGamepads() : [])){
+    if(!p) continue;
+    p.buttons.forEach((b,i) => {
+      const now = b.pressed || b.value > .5;
+      if(now && !padPrev[i] && i < 4) launch(String(i + 1));
+      padPrev[i] = now;
+    });
+  }
+  requestAnimationFrame(pad);
+})();
+
+/* ---------- footer ping and glitch ---------- */
+const CELLS = Array.from(document.querySelectorAll("footer > button"));
+const rnd = (a,b) => a + Math.random()*(b-a);
+function flash(el){ el.classList.remove("ping"); void el.offsetWidth; el.classList.add("ping");
+  setTimeout(() => el.classList.remove("ping"), 460); }
+const PATTERNS = [
+  () => CELLS.forEach((el,i) => setTimeout(() => flash(el), i*70)),
+  () => CELLS.slice().reverse().forEach((el,i) => setTimeout(() => flash(el), i*70)),
+  () => CELLS.slice().sort(() => Math.random()-.5).forEach((el,i) => setTimeout(() => flash(el), i*55)),
+  () => { const c = (CELLS.length-1)/2;
+          CELLS.forEach((el,i) => setTimeout(() => flash(el), Math.abs(i-c)*90)); }
+];
+let pLast = -1;
+setInterval(() => { let i; do { i = Math.floor(Math.random()*PATTERNS.length); }
+  while(i === pLast); pLast = i; PATTERNS[i](); }, 7400);
+
+const fx = $("#fx");
+const SURF = [document.querySelector("header"), document.querySelector("main"),
+              document.querySelector("footer")];
+const surface = f => SURF.forEach(el => el.style.filter = f || "");
+const bell = t => Math.sin(Math.PI*t);
+function ramp(ms, fn, done){
+  const t0 = performance.now();
+  (function step(now){
+    const t = Math.min(1, (now - t0)/ms); fn(t);
+    if(t < 1) requestAnimationFrame(step); else done && done();
+  })(performance.now());
+}
+function fxTear(){
+  const turb = $("#fx-turb"), map = $("#fx-map");
+  turb.setAttribute("baseFrequency", "0.000001 " + rnd(.02,.06).toFixed(4));
+  surface("url(#fx-disp)");
+  ramp(340, t => { map.setAttribute("scale", (bell(t)*rnd(26,46)).toFixed(1));
+    if(Math.random() < .35) turb.setAttribute("seed", Math.floor(rnd(1,99))); },
+    () => { surface(""); map.setAttribute("scale", 0); });
+}
+function fxChroma(){
+  const r = $("#fx-off-r"), c = $("#fx-off-c"), dir = Math.random() < .5 ? 1 : -1;
+  surface("url(#fx-rgb)");
+  ramp(280, t => { const d = bell(t)*rnd(4,9)*dir;
+    r.setAttribute("dx", d.toFixed(1)); c.setAttribute("dx", (-d).toFixed(1)); },
+    () => { surface(""); r.setAttribute("dx",0); c.setAttribute("dx",0); });
+}
+function fxDropout(){
+  document.body.classList.add("fx-drop");
+  fx.innerHTML = `<div class="dark"></div><div class="scan" style="top:${rnd(-10,70)}%"></div>`;
+  fx.classList.add("on");
+  setTimeout(() => { const d = fx.querySelector(".dark"); if(d) d.style.opacity = ".15"; }, 70);
+  setTimeout(() => { document.body.classList.remove("fx-drop");
+    fx.classList.remove("on"); fx.innerHTML = ""; }, 260);
+}
+function fxLine(){
+  fx.innerHTML = `<div class="line" style="top:${rnd(10,85)}%"></div>`;
+  fx.classList.add("on");
+  setTimeout(() => { fx.classList.remove("on"); fx.innerHTML = ""; }, 140);
+}
+const FX = [fxTear, fxChroma, fxDropout, fxLine];
+let fLast = -1;
+(function loop(){
+  setTimeout(() => { let i; do { i = Math.floor(Math.random()*FX.length); }
+    while(i === fLast); fLast = i; FX[i](); loop(); }, rnd(5000, 8000));
+})();
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
