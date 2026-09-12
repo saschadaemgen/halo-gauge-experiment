@@ -252,27 +252,67 @@ button.tab.on:hover{background:#102936;color:var(--beam)}
 .chip input{font-family:var(--mono);font-size:.95rem;color:var(--needle);background:transparent;
   border:none;width:4.6rem;padding:0;min-width:0}
 .chip input:focus{outline:none;color:var(--ink)}
-#cd{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-  background:rgba(7,9,11,.9);z-index:20}
-#cd.on{display:flex}
-#cd .box{border:1px solid var(--beam);background:var(--panel);padding:2rem 2.4rem;
-  display:flex;flex-direction:column;align-items:center;gap:1rem;min-width:min(34rem,80vw);
-  box-shadow:0 0 3rem rgba(0,159,227,.2);animation:boxin .22s ease-out}
-@keyframes boxin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
-#cd .what{font-size:.85rem;letter-spacing:.28em;color:var(--dim)}
-#cd .card{font-size:clamp(2rem,8vh,3.4rem);line-height:1;color:var(--needle);
-  letter-spacing:.04em;text-align:center}
+/* The prompt never cuts. It fades in, changes state in place while the series
+   is armed, and lifts off once the probe has the command. */
+#cd{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(7,9,11,0);z-index:20;opacity:0;visibility:hidden;
+  transition:opacity .28s ease,background .28s ease,visibility 0s .28s}
+#cd.on{opacity:1;visibility:visible;background:rgba(7,9,11,.9);
+  transition:opacity .28s ease,background .28s ease,visibility 0s}
+#cd.lift{opacity:0;background:rgba(7,9,11,0);
+  transition:opacity .42s ease,background .42s ease,visibility 0s .42s}
+#cd .box{position:relative;border:1px solid var(--beam);background:var(--panel);
+  padding:1.9rem 2.4rem 1.6rem;display:flex;flex-direction:column;align-items:center;
+  gap:.8rem;min-width:min(36rem,84vw);overflow:hidden;
+  box-shadow:0 0 3rem rgba(0,159,227,.18);
+  transform:translateY(.8rem) scale(.97);opacity:0;
+  transition:transform .34s cubic-bezier(.2,.9,.25,1),opacity .28s ease,
+             border-color .3s ease,box-shadow .3s ease}
+#cd.on .box{transform:none;opacity:1}
+#cd.lift .box{transform:translateY(-.5rem) scale(1.02);opacity:0;
+  transition:transform .42s ease-in,opacity .32s ease-in}
+
+#cd .haz{position:absolute;left:0;right:0;top:0;height:.55rem;overflow:hidden}
+#cd .haz.bottom{top:auto;bottom:0}
+#cd .haz i{position:absolute;inset:0;transform:scaleX(0);
+  transition:transform .34s cubic-bezier(.3,.9,.25,1);
+  background:repeating-linear-gradient(115deg,var(--needle) 0 .8rem,#0B0F12 .8rem 1.6rem)}
+#cd.armed .haz i{transform:scaleX(1)}
+
+#cd .what{font-size:.82rem;letter-spacing:.3em;color:var(--dim);
+  transition:color .3s ease,letter-spacing .3s ease}
+#cd.armed .what{color:var(--needle);letter-spacing:.36em}
+#cd .card{font-size:clamp(1.9rem,7.4vh,3.2rem);line-height:1;color:var(--needle);
+  letter-spacing:.04em;text-align:center;
+  transition:color .3s ease,transform .34s cubic-bezier(.2,.9,.25,1),opacity .3s ease}
 #cd .card.white{color:var(--dial)}
-#cd .hint{font-size:.95rem;color:var(--dim);text-align:center}
-#cd .row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;width:100%;margin-top:.4rem}
+#cd.armed .card{transform:scale(.82);opacity:.75}
+#cd .hint{font-size:.95rem;color:var(--dim);text-align:center;min-height:2.6em;
+  transition:color .3s ease}
+#cd.armed .hint{color:var(--ink)}
+#cd .warn{font-size:.84rem;letter-spacing:.09em;color:var(--needle);text-align:center;
+  opacity:0;max-height:0;overflow:hidden;
+  transition:opacity .3s ease .1s,max-height .34s ease}
+#cd.armed .warn{opacity:1;max-height:5rem}
+#cd .row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;width:100%;
+  transition:opacity .22s ease,max-height .3s ease,margin .3s ease}
 #cd .row button{font-size:1.05rem;padding:.85rem}
 #cd .ok{color:var(--beam);border-color:var(--beam);background:#0C1E28}
 #cd .ok:hover{background:#102936}
-#cd.settle .box{border-color:var(--dial)}
-#cd .bar{width:100%;height:3px;background:#10161B;overflow:hidden;display:none}
-#cd.settle .bar{display:block}
-#cd .bar div{height:100%;width:0;background:var(--dial);animation:settlebar .8s linear both}
-@keyframes settlebar{to{width:100%}}
+#cd.armed .row{opacity:0;max-height:0;margin-top:-.8rem;pointer-events:none}
+#cd .bar{width:100%;height:4px;background:#10161B;overflow:hidden;opacity:0;
+  transition:opacity .25s ease}
+#cd.armed .bar{opacity:1}
+#cd .bar div{height:100%;width:0;background:var(--needle);
+  box-shadow:0 0 .7rem rgba(252,184,3,.6)}
+#cd.armed .bar div{animation:armbar 1.15s cubic-bezier(.5,0,.2,1) forwards}
+#cd.armed.hot .box{border-color:var(--dial);box-shadow:0 0 4rem rgba(241,239,232,.22)}
+#cd.armed.hot .bar div{background:var(--dial);box-shadow:0 0 .8rem rgba(241,239,232,.7)}
+@keyframes armbar{to{width:100%}}
+@media (prefers-reduced-motion:reduce){
+  #cd,#cd .box,#cd .haz i,#cd .card,#cd .row{transition:none}
+  #cd.armed .bar div{animation:none;width:100%}
+}
 
 /* the footer is polled like a bus: one cell lights at a time, the two rows
    running in opposite directions, and the direction flips every pass */
@@ -491,10 +531,13 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   </div>
 </footer>
 <div id="cd"><div class="box">
+  <div class="haz"><i></i></div>
+  <div class="haz bottom"><i></i></div>
   <span class="what" id="cd-what">INSERT CARD</span>
   <span class="card" id="cd-card">white</span>
   <span class="hint" id="cd-hint">Put the card in the pocket, close the stack, take your hand off.</span>
-  <div class="bar"><div></div></div>
+  <span class="warn" id="cd-warn"></span>
+  <div class="bar"><div id="cd-bar"></div></div>
   <div class="row">
     <button class="ok" id="cd-ok"><kbd>enter</kbd>Measure</button>
     <button id="cd-cancel"><kbd>esc</kbd>Cancel</button>
@@ -844,31 +887,59 @@ function armed(key, label){
   $("#cd-hint").textContent = label
     ? "Put the card for this position in the pocket, close the stack, hands off."
     : "Put the " + name + " card in the pocket, close the stack, hands off.";
-  cd.classList.remove("settle");
+  cd.classList.remove("armed", "hot", "lift");
+  $("#cd-warn").textContent = "";
   cd.classList.add("on");
   setTimeout(() => $("#cd-ok").focus(), 30);
 }
 
+/* Arming is one continuous move: the card name settles back, the hazard bands
+   open, the warning takes the place of the buttons, the bar fills, and only
+   then does the command go out. Nothing switches instantly. */
+const WARNINGS = [
+  "OPTICAL HAZARD   470 nm EMITTER ARMED   DO NOT LOOK INTO THE APERTURE",
+  "FIXTURE SEALED   ANY CONTACT VOIDS THE SERIES",
+  "DIFFERENTIAL MODE   AMBIENT IS SAMPLED WITH THE EMITTER DARK",
+  "SPECIMEN UNDER BEAM   KEEP THE BENCH STILL UNTIL THE BAR CLEARS"
+];
+
 function armedGo(){
   if(!pending) return;
-  const cd = $("#cd");
-  cd.classList.add("settle");
-  $("#cd-what").textContent = "SETTLING";
-  $("#cd-hint").textContent = "beam 470 nm, differential mode";
-  const bar = cd.querySelector(".bar div");
+  const cd = $("#cd"), bar = $("#cd-bar");
+  cd.classList.add("armed");
+  $("#cd-what").textContent = "CHAMBER ARMED";
+  $("#cd-hint").textContent = "Sampling begins when the bar clears.";
+  $("#cd-warn").textContent = WARNINGS[Math.floor(Math.random() * WARNINGS.length)];
   bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
+
   setTimeout(() => {
+    cd.classList.add("hot");
+    $("#cd-what").textContent = "SAMPLING";
+    $("#cd-hint").textContent = "hands off the fixture";
+  }, 880);
+
+  setTimeout(() => {
+    if(!pending) return;
     send(pending.key);
     pending = null;
-    cd.classList.remove("on", "settle");
+    cd.classList.add("lift");
+  }, 1180);
+
+  setTimeout(() => {
+    cd.classList.remove("on", "armed", "hot", "lift");
     counting = false;
-  }, 820);
+  }, 1640);
 }
 
 function armedCancel(){
+  if(!pending) return;                      // already under way, let it finish
   pending = null;
-  $("#cd").classList.remove("on", "settle");
-  counting = false;
+  const cd = $("#cd");
+  cd.classList.add("lift");
+  setTimeout(() => {
+    cd.classList.remove("on", "armed", "hot", "lift");
+    counting = false;
+  }, 440);
 }
 
 $("#cd-ok").onclick = armedGo;
