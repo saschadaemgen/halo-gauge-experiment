@@ -325,9 +325,13 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{filter:contrast(1.6) s
 .blines{position:absolute;left:6vw;bottom:7vh;font-size:min(1.9vh,.8rem);color:var(--dim);
   line-height:1.7;text-align:left}
 .blines b{font-weight:400;color:var(--beam)}
-.bscan{position:absolute;left:0;right:0;height:30%;pointer-events:none;
-  background:repeating-linear-gradient(180deg,rgba(0,159,227,.10) 0 1px,transparent 1px 3px);
-  animation:bootscan 1.9s linear both}
+.bscan{position:absolute;left:0;right:0;height:2px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--beam) 12%,#fff 50%,
+    var(--beam) 88%,transparent);box-shadow:0 0 1.6rem rgba(0,159,227,.7);
+  opacity:.9;animation:bootscan 1.9s cubic-bezier(.55,0,.35,1) both}
+.bgrid{position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background:repeating-linear-gradient(180deg,rgba(0,159,227,.055) 0 1px,
+    transparent 1px 4px)}
 @keyframes bootlogo{from{opacity:0;transform:scale(.4) rotate(-60deg)}
   to{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes bootring{from{stroke-width:170;opacity:0}60%{stroke-width:40.3;opacity:1}
@@ -335,7 +339,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{filter:contrast(1.6) s
 @keyframes bootcore{from{transform:scale(3);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes bootin{from{opacity:0;transform:translateY(.5rem)}to{opacity:1;transform:none}}
 @keyframes bootbar{from{width:0}to{width:100%}}
-@keyframes bootscan{from{top:-30%}to{top:100%}}
+@keyframes bootscan{0%{top:-2%}45%{top:101%}55%{top:101%}100%{top:-2%}}
 @keyframes bootout{to{opacity:0;transform:scale(1.06);filter:brightness(2.4)}}
 @keyframes bootgA{
   0%,14%{opacity:0}15%{opacity:1;transform:translate(-6px,-2px);clip-path:inset(8% 0 62% 0)}
@@ -470,7 +474,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{filter:contrast(1.6) s
   <button class="tab" data-view="setup"><kbd>4</kbd>Setup</button>
   <button id="shot"><kbd>s</kbd>Shot<em>Y</em></button>
   <button id="export"><kbd>e</kbd>Export</button>
-  <button id="fs"><kbd>f</kbd>Full</button>
+  <button id="menu"><kbd>esc</kbd>Menu</button>
   <div class="pair">
     <button id="smaller"><kbd>-</kbd>A</button>
     <button id="bigger"><kbd>+</kbd>A</button>
@@ -492,6 +496,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{filter:contrast(1.6) s
   </div>
   <div class="bbar"><div></div></div>
   <div class="blines" id="blines"></div>
+  <div class="bgrid"></div>
   <div class="bscan"></div>
 </div>
 
@@ -851,17 +856,21 @@ $("#ap").addEventListener("change", pushMeta);
 $("#shot").addEventListener("click", () =>
   fetch("/shot",{method:"POST"}).then(r=>r.json())
     .then(r=>toast(r.ok ? "saved " + r.path : "screenshot: " + r.error)));
-$("#fs").addEventListener("click", () => {
+$("#menu").addEventListener("click", () => {
+  location.href = "http://" + location.hostname + ":8750/";
+});
+function toggleFull(){
   if(document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(()=>toast("full screen refused"));
-});
+}
 
 addEventListener("keydown", e => {
   if(e.target.tagName === "INPUT" || e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
   if("wyrigcn".includes(k)){ e.preventDefault(); command(k); }
   else if(k === "s"){ e.preventDefault(); $("#shot").click(); }
-  else if(k === "f"){ e.preventDefault(); $("#fs").click(); }
+  else if(k === "f"){ e.preventDefault(); toggleFull(); }
+  else if(e.key === "Escape"){ e.preventDefault(); $("#menu").click(); }
   else if(k === "1"){ show("live", true); }
   else if(k === "2"){ show("series", true); }
   else if(k === "3"){ show("result", true); }

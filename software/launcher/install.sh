@@ -44,10 +44,17 @@ else
 
 $MARK
 unclutter --timeout 2 &
-( sleep 4
-  $BROWSER --kiosk --noerrdialogs --disable-infobars \\
-    --disable-session-crashed-bubble --check-for-update-interval=31536000 \\
-    --app=http://127.0.0.1:8750 ) &
+( # the panel and the file manager desktop have no business on a terminal
+  pkill -f wf-panel-pi 2>/dev/null
+  pkill -f "pcmanfm --desktop" 2>/dev/null
+  # start as soon as the launcher answers, not after a fixed wait
+  for i in \$(seq 1 60); do
+    curl -s -o /dev/null http://127.0.0.1:8750/ && break
+    sleep 0.25
+  done
+  $BROWSER --kiosk --noerrdialogs --disable-infobars \
+    --disable-session-crashed-bubble --check-for-update-interval=31536000 \
+    --start-fullscreen --app=http://127.0.0.1:8750 ) &
 AUTOEOF
   echo "  appended to $AUTO, old copy kept as a backup"
 fi
