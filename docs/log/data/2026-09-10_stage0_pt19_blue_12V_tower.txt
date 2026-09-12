@@ -1,0 +1,17 @@
+# halo-gauge-experiment, stage 0, 2026-09-10
+# sensor: ALS-PT19 (Adafruit 2748) on PT-A, GPIO 36, 10 kOhm on-board load, ESP32 ADC (floor about 142 mV)
+# mount: tower, sensor about 10 mm above the card, no aperture; light: blue 5 mm LED, 12 V cable, YIHUA 3005D-II at 12.0 V via IRLB8721 low-side switch, about 20 mA
+# cards: HGE-C01 white, HGE-C02 needle yellow; frame V6
+
+[RUN] target=WHITE (dial)  light=BLUE LED  samples=50
+      ch     on.mean   on.sd   off.mean  off.sd   signal   noise
+      PT-A     2286.3   10.16     142.0    0.00   2144.3   10.16 mV
+
+[RUN] target=YELLOW (needle)  light=BLUE LED  samples=50
+      ch     on.mean   on.sd   off.mean  off.sd   signal   noise
+      PT-A      451.0    5.38     142.0    0.00    309.0    5.38 mV
+
+  REPORT  light=BLUE LED
+  ch     white     yellow   contrast    noise     SNR   verdict
+  PT-A     2144.3     309.0     85.6 %    11.50   159.6   GO
+# note: off values sit at the ADC floor, so absolute on values give the honest ratio: 2286 / 451 = 5.1

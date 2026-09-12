@@ -1,0 +1,25 @@
+# halo-gauge-experiment, stage 0, 2026-09-10 (measured late 2026-09-09)
+# sensor: TCS34725, gain 60x, integration 154 ms; light: blue 5 mm LED, 12 V type cable on 3.3 V GPIO (about 0.6 mA), USB supply
+# aperture: none (slide empty); cards: HGE-C01 white, HGE-C02 needle yellow; frame V6
+
+[RUN] target=WHITE (dial)  light=BLUE LED  gain=60x  samples=50
+      ch     on.mean   on.sd   off.mean  off.sd   signal   noise
+      C        1067.7   38.53       0.0    0.00   1067.7   38.53 cnt
+      R          12.0    0.45       0.0    0.00     12.0    0.45 cnt
+      G         275.8   10.00       0.0    0.00    275.8   10.00 cnt
+      B         827.9   29.86       0.0    0.00    827.9   29.86 cnt
+
+[RUN] target=YELLOW (needle)  light=BLUE LED  gain=60x  samples=50
+      ch     on.mean   on.sd   off.mean  off.sd   signal   noise
+      C         224.1    4.22       0.0    0.00    224.1    4.22 cnt
+      R           3.3    0.46       0.0    0.00      3.3    0.46 cnt
+      G          62.8    1.27       0.0    0.00     62.8    1.27 cnt
+      B         168.4    3.25       0.0    0.00    168.4    3.25 cnt
+
+  REPORT  light=BLUE LED
+  ch     white     yellow   contrast    noise     SNR   verdict
+  C        1067.7     224.1     79.0 %    38.76    21.8   GO
+  R          12.0       3.3     72.4 %     0.65    13.4   GO
+  G         275.8      62.8     77.2 %    10.08    21.1   GO
+  B         827.9     168.4     79.7 %    30.03    22.0   GO
+  best channel: B  SNR=22.0  ->  GO

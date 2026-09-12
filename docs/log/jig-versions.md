@@ -1,48 +1,89 @@
-# Test jig, version history
+# Test fixture, version history
 
-This is the log of how the test jig got to version 5. Versions 1 to 4 were discarded before or during printing. They are documented here because the reasons are the design rules for the final sensor ring.
+How the fixture got to V6, and why each version was thrown away. The reasons
+are the design rules for the sensor ring, which is why they are written down.
 
 ## V1, 2026-09-08
 
-Base plate 120 x 120 mm with a card pocket, a 120 mm bridge with a board pocket, and five 5 mm aperture discs with printed holes of 0.6 to 3.0 mm. LED channels bored at 28 degrees through the bridge body.
+Base plate with a card pocket, a bridge over it carrying the sensor board, and
+five printed aperture discs of 5 mm diameter with holes from 0.6 to 3.0 mm.
+LED channels bored at 28 degrees through the solid bridge.
 
-Discarded because:
+Discarded:
 
-- The 0.6 mm printed hole did not exist after printing, even at 0.08 mm layer height. FDM cannot produce clean holes below about 1.5 mm.
-- The 5 mm discs were too small to handle or to seat repeatably.
-- Angled 3 mm bores through a solid body print badly, the top of the bore sags and the LED sits crooked.
-- The tunnel under the bridge was open on both long sides. Ambient light entered from the sides and reflected off the white card to the sensor.
+- The 0.6 mm printed hole did not exist after printing, even at 0.08 mm layer
+  height. FDM does not make clean holes below about 1.5 mm.
+- 5 mm discs are too small to handle and cannot be seated repeatably.
+- Angled bores through a solid body print badly. The roof of the bore sags and
+  the LED sits crooked.
+- The tunnel under the bridge was open along both long sides, so ambient light
+  reached the card from the side.
 
 ## V2 and V3, 2026-09-09
 
-Same bridge with light skirts along both long edges, first with a 0.3 mm gap above the card (V2), then touching the card (V3). Fixed the side leak, not the other three problems. Discarded with V1.
+The same bridge with light skirts along both edges, first with a 0.3 mm gap
+above the card, then touching it. Fixed the side leak and none of the rest.
 
 ## V4, 2026-09-09
 
-First modular stack: frame, aperture slide, sensor carrier, clamshell LED plugs for 3 mm LEDs, rail. All parts flat, all bores vertical in print orientation, pinhole in a black card instead of a printed hole.
+First modular stack: frame, aperture slide, sensor carrier, clamshell plugs for
+3 mm LEDs, rail. Every part flat, every bore vertical in print orientation, the
+aperture moved out of the printer and into a pierced black card.
 
-Discarded before printing because the available LEDs are 5 mm, not 3 mm, and the clamshell plug geometry does not scale to a 5 mm body inside the frame.
+Discarded before printing: the LEDs on hand are 5 mm, and the clamshell plug
+does not scale to a 5 mm body inside the frame.
 
-Lesson: ask for the component dimensions before designing the holder.
+Lesson: confirm the dimensions of a component before drawing its holder.
 
-## V5, 2026-09-09, current
+## V5, 2026-09-09
 
-Modular stack, five printed parts plus the V1 base plate:
+The 5 mm LEDs moved out of the frame into their own blocks standing beside it,
+each with a straight bore aimed at the measurement spot and an outer face cut
+perpendicular to that bore, so the part prints standing with the bore vertical.
+Pins of 1.75 mm filament aligned the stack.
 
-- frame 44 x 44 x 14, stands on the card, light chamber 34 x 34 x 12, opening 24 x 24 in the top, light windows 12 x 12 in two walls
-- slide 44 x 44 x 2, carries a 28 x 28 mm black pinhole card
-- carrier 44 x 44 x 26, holds the TCS34725 board component side down, 20 mm deep 8 mm shaft
-- two LED holders for 5 mm LEDs, outside the frame, bore aimed at the spot from 20 degrees, outer face cut perpendicular to the bore so the part prints standing with the bore vertical
-- rail 120 x 60 x 4, locates frame and holders on the base plate pegs
+Discarded: the pins align but hold nothing. The stack rattled, and a rattling
+stack changes the geometry between two series, which is the one thing a
+reference fixture must not do.
 
-Four pins of 1.75 mm filament align frame, slide and carrier.
+## V6, 2026-09-10, current
 
-Geometry: aperture 15.75 mm above the card, chip 22.6 mm above the aperture. Spot on the card is about 1.7 x pinhole diameter plus 0.3 mm: a 0.5 mm needle hole gives 1.1 mm, a 1.0 mm drilled hole gives 2.0 mm.
+```
+base plate   120 x 120 x 4    card pocket, four pegs
+rail         120 x 60 x 4     locates frame and LED holders on the card
+frame        46 x 46 x 14     light chamber, windows in two walls
+slide        46 x 46 x 2      holds the aperture card
+carrier      46 x 46 x 26     sensor pocket, 8 mm shaft
+lid          46 x 46 x 2      closes the sensor pocket, slot for the header
+LED holder   26 x 46 x 22     two off, 5 mm LED at 20 degrees
+LED cap      11 x 28 x 3      two off, presses the LED flange flat
+insert       20.3 x 20.3 x 3.2  carries an ALS-PT19 in the sensor pocket
+```
 
-Design rules that came out of V1 to V4 and carry over to the sensor ring PCB and its baffles:
+Everything is screwed with M3 straight into the printed plastic. The stack no
+longer moves between series.
+
+### Rules that came out of V1 to V5
 
 1. Every printed bore is vertical in its print orientation.
-2. No printed hole below 1.5 mm. Small apertures go into black card, pierced or drilled.
-3. Any part that must be handled is at least 20 mm across.
-4. Light tightness is a closed box standing on the target, not a roof.
-5. Component dimensions are confirmed before the holder is drawn.
+2. No printed hole below 1.5 mm. Small apertures go into black card.
+3. Anything that has to be handled is at least 20 mm across.
+4. Light tightness is a closed box standing on the target, not a roof over it.
+5. Alignment is not fixation. If it can rattle, it will, and it will do it
+   between two series.
+6. Component dimensions are confirmed before the holder is drawn.
+
+### Things that cost an evening and are worth writing down
+
+**The breadboard rail is split in the middle.** The MOSFET had no ground at
+all, and every measurement that followed was wrong until a multimeter found it.
+
+**A logic level MOSFET from an unknown batch may not be one.** With 3.3 V on
+the gate it held 2.1 V across drain and source instead of under 0.1. The LED
+lit, dimly, and the contrast measurement still worked because contrast is a
+ratio. The absolute numbers from that session are not comparable with later
+ones and are labelled accordingly.
+
+**The tower was a mistake.** A carrier that hangs the sensor deeper into the
+chamber sounds like it gets closer to the card. It got further away, and the
+phototransistor sat on the converter floor until the short carrier went back in.

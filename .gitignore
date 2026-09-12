@@ -1,0 +1,23 @@
+# OS
+Thumbs.db
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+
+# Arduino build output
+firmware/**/build/
+*.bin
+*.elf
+
+# The measurement database and the running session log belong to a machine,
+# not to the repository. Finished series and reports are committed as files.
+docs/log/halo.db
+docs/log/halo.db-*
+docs/log/data/session_*.log
+
+# Local WiFi credentials must never be pushed
+firmware/**/secrets.h

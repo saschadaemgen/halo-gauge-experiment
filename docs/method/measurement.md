@@ -1,69 +1,140 @@
-# Measurement method, stage 0 and 1
+# Measurement method
 
-## Question
+How a series is taken, what the numbers mean, and what has to be true for them
+to be worth anything.
 
-Is the reflective contrast between a white dial and a yellow needle large enough for a cheap reflective sensor to detect the needle reliably, and does blue illumination improve it.
+## The question
 
-Go / no-go: SNR >= 10 on at least one channel, where SNR is the difference between the white and the yellow signal divided by the combined noise.
+Is the reflective contrast between a gauge dial and its needle large enough for
+a cheap sensor to tell them apart, and does the choice of wavelength matter.
 
-## Sensors on the rig
+Go / no-go, set before the first measurement: **SNR of 10 or better** on at
+least one channel, where SNR is the difference between the two targets divided
+by the combined noise.
 
-- TCS34725 RGB color sensor (CJMCU clone, I2C 0x29). Gives four 16 bit channels: clear, red, green, blue. Used to characterise the contrast per wavelength band.
-- Two ALS-PT19 phototransistor breakouts (analog out). Broadband detectors, the same class of part the final sensor ring will use.
-- One white and one blue 5 mm LED, clear lens, in the jig's LED holders, aimed at the measurement spot from 20 degrees elevation.
+## Sensors
 
-None of these sensors has a defined field of view. Their angular response is Lambertian, effectively 180 degrees. The measurement spot is therefore defined entirely by the pinhole card in the jig, see `hardware/jig/README.md`.
+| part | what it is for | connection |
+|---|---|---|
+| TCS34725 | the instrument of the experiment. Four channels, clear, red, green and blue, so it says *which* wavelength the needle swallows | I2C |
+| ALS-PT19 | what goes into the product. Broadband, no gain, thirty cents | analog |
+
+Both sit in the same carrier pocket, one at a time, so nothing but the sensor
+changes between the two runs. The colour sensor answers why it works, the
+phototransistor proves the cheap part is enough.
 
 ## Wiring, Heltec WiFi LoRa 32 V2
 
-| Part | Pin | Heltec |
-|---|---|---|
-| TCS34725 | VIN | 5V |
-| TCS34725 | GND | GND |
-| TCS34725 | SDA | GPIO 4 (shared with OLED) |
-| TCS34725 | SCL | GPIO 15 (shared with OLED) |
-| TCS34725 | LED | GND (board LED permanently off) |
-| ALS-PT19 A | + / - / out | 3V3 / GND / GPIO 36 |
-| ALS-PT19 B | + / - / out | 3V3 / GND / GPIO 37 |
-| white LED | anode via 220 ohm | GPIO 23 |
-| blue LED | anode via 220 ohm | GPIO 22 |
+| part | pin | Heltec | colour |
+|---|---|---|---|
+| TCS34725 | VIN | 5V | red |
+| TCS34725 | GND | GND | black |
+| TCS34725 | SCL | 15 | yellow |
+| TCS34725 | SDA | 4 | blue |
+| TCS34725 | LED | GND | black |
+| ALS-PT19 A | + / - / out | 3V3 / GND / 36 | orange / brown / white |
+| ALS-PT19 B | + / - / out | 3V3 / GND / 37 | orange / brown / green |
+| blue LED | gate of its switch | 22 | violet |
+| white LED | gate of its switch | 23 | grey |
 
-The OLED of the Heltec V2 sits on GPIO 4 / 15 with reset on GPIO 16 and is powered through Vext (GPIO 21 low). The sketch handles this.
+The OLED of the Heltec V2 shares the I2C bus on GPIO 4 and 15, with reset on 16
+and power through Vext on 21. The firmware handles that.
 
-## Test cards
+### Light source
 
-All cards are 100 x 100 mm, printed on the same printer and paper, and sit in the pocket of the base plate.
+The LEDs are 5 mm with a clear lens, blue around 470 nm and cold white for the
+comparison run. They sit in printed holders outside the chamber and shine
+through a window in its wall at 20 degrees, so the geometry is 20/0: light in
+at twenty degrees, sensor looking straight down. Colour measurement usually
+works at 45/0, but under ten millimetres of build height there is no room for
+forty-five degrees, and the ring will have the same constraint.
 
-1. Full white.
-2. Full yellow in the exact needle colour taken from the gauge artwork.
-3. Nine 1:1 dial cards with the needle at 0, 5, 10, 15, 20, 25, 30, 35 and 40 MPa. Dial centre at card centre.
+They run from a bench supply at 12 V through the resistor in their lead, about
+20 mA, switched low side by a logic level MOSFET on the gate pins above.
 
-Cards 1 and 2 answer the material question (does the colour contrast exist). The 1:1 cards answer the geometry question (does a 1 mm wide needle still register through a small aperture). Printer ink is not needle lacquer, so the cards prove viability, not calibration. Calibration happens on the real gauge later.
+**Two things learned the hard way, both in the log:**
+
+An LED lead with an inline resistor sized for 12 V draws half a milliampere at
+3.3 V. It lights, and it is useless. Always check the current, not the glow.
+
+Supply matters more than expected. The first series ran off the USB rail and
+carried 3.6 % scatter. The same measurement off a linear bench supply carried
+0.5 %. The scatter grew with the signal, which is what told us it came from the
+light source and not from the sensor.
+
+## Cards
+
+Printed on one printer, on one paper, at 100 % with no scaling. Every sheet
+carries a ruler so a wrongly scaled print is obvious before it is measured.
+
+| card | what it is |
+|---|---|
+| HGE-C01 | white, the dial reference. No ink at all, the paper is the reference |
+| HGE-C02 | the needle colour, RGB 252 / 184 / 3, sampled from the gauge artwork |
+| HGE-D01.. | dial cards with the needle at each position, generated by `tools/make_cards.py` |
+
+Printer ink is not needle lacquer. These cards prove the method is viable. The
+calibration happens on the real gauge.
+
+### Scale and the aperture that goes with it
+
+The needle at the measuring radius is thinner than it looks: on a 20 mm dial
+with the sensor at 7 mm it is about 0.55 mm wide. To see the shape of the
+shadow at all, the dial cards are printed magnified.
+
+At any scale other than 1:1 two things have to scale with it, or the test
+flatters itself:
+
+- **the aperture.** A 1.6 mm sensor element at 3:1 is 4.8 mm. Measuring a
+  magnified needle through a 1 mm hole is looking closer than the real part
+  ever will.
+- **the position of the dial.** The sensor sits at a fixed 7 mm from the card
+  centre in this fixture. At 3:1 the measuring radius is 21 mm, so the card
+  generator shifts the dial 14 mm down and the fixed sensor lands exactly on
+  the measuring radius. The card prints a dashed mark at that spot so it can be
+  checked by eye.
 
 ## Procedure
 
-1. Card in the pocket, rail on the pegs, frame and LED holders in the rail window, pins, slide with pinhole card, carrier with sensor board.
-2. Serial monitor at 115200 baud. The OLED shows live values. If the clear channel shows `SAT`, lower the gain with `g`.
-3. `w` runs the white series: 50 samples with the LED on, 50 with the LED off.
-4. Swap to the yellow card, `y` runs the yellow series.
-5. `r` prints the report: per channel signal white, signal yellow, contrast, noise, SNR, verdict.
-6. `i` switches from the white LED to the blue LED. Repeat 3 to 5.
+1. Card in the pocket of the base plate, rail on the pegs, frame on the card,
+   LED holders either side, slide with the aperture card, carrier with the
+   sensor, four screws.
+2. Start the software, pick the campaign in the setup view. The aperture field
+   and the needle position go into every file name and every record.
+3. Press White, confirm when the fixture is closed and your hand is off it. The
+   probe takes N samples with the emitter on and N with it off.
+4. Swap to the yellow card, press Yellow.
+5. Press Report.
 
-The differential (LED on minus LED off) removes constant ambient light. It does not remove flicker, so the room lights stay off during a series.
+For a needle sweep the same thing runs against the position list: the software
+asks for the card of the next position, you confirm, it measures, ticks that
+position off and moves to the next.
 
 ## Evaluation
 
-Per channel:
+Per channel, with `on` and `off` meaning emitter on and emitter off:
 
-- signal = mean(on) minus mean(off)
-- noise = sqrt(sd(on)^2 + sd(off)^2)
-- contrast = (signal_white minus signal_yellow) / signal_white
-- SNR = |signal_white minus signal_yellow| / sqrt(noise_white^2 + noise_yellow^2)
+```
+signal   = mean(on) - mean(off)
+noise    = sqrt(sd(on)^2 + sd(off)^2)
+contrast = (signal_white - signal_yellow) / signal_white
+SNR      = |signal_white - signal_yellow| / sqrt(noise_white^2 + noise_yellow^2)
+```
 
-Expected under white light: red and green nearly unchanged between white and yellow, blue drops. The broadband phototransistors see little difference.
+The on-minus-off difference removes constant ambient light. It does not remove
+flicker, so room lighting stays off during a series.
 
-Expected under blue light: the clear channel and both phototransistors drop on yellow. This is the number that decides the sensor ring, because the ring will use broadband phototransistors under blue LEDs.
+**One honest caveat that belongs with every phototransistor number.** The ESP32
+analog input has a floor around 142 mV and reads everything below it as the
+same value. When the emitter-off reading sits on that floor, the difference is
+not trustworthy and the ratio of the absolute on-values is the honest figure.
+That is also the reason the sensor ring will not hang straight off an ESP32
+input: it needs an external converter or a gain stage. That was found here,
+before the board was laid out, which is what this fixture is for.
 
 ## Raw data
 
-Serial output of every series is stored verbatim under `docs/log/data/` with date, card, light source, gain and pinhole diameter in the file name.
+Every finished series is written three ways into `docs/log/data/`: a readable
+text record, the raw JSON from the firmware, and a row in the SQLite database.
+Every serial line, parseable or not, also goes into a dated session log, which
+is the fallback if anything else fails.
