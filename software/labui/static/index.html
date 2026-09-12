@@ -11,7 +11,13 @@
   --beam:#009FE3; --beam-dim:#0A5C82; --needle:#FCB803; --dial:#F1EFE8; --alarm:#E2483F;
   --mono:"DejaVu Sans Mono","Liberation Mono","Consolas",monospace;
 }
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;scrollbar-width:thin;
+  scrollbar-color:#2B343C #0B0F12}
+*::-webkit-scrollbar{width:.5rem;height:.5rem}
+*::-webkit-scrollbar-track{background:#0B0F12}
+*::-webkit-scrollbar-thumb{background:#2B343C;border:1px solid var(--line)}
+*::-webkit-scrollbar-thumb:hover{background:var(--beam-dim)}
+*::-webkit-scrollbar-corner{background:#0B0F12}
 html{font-size:var(--ui)}
 body{width:100%;height:100vh;overflow:hidden;background:var(--bg);color:var(--ink);
   font-family:var(--mono);font-size:1rem;line-height:1.3;-webkit-font-smoothing:antialiased;
@@ -118,8 +124,8 @@ tr.off td{color:var(--dim)}
 .col h3{font-size:.78rem;font-weight:400;letter-spacing:.1em;color:var(--dim);
   padding:.45rem .6rem;border-bottom:1px solid var(--line);display:flex;align-items:center}
 .col h3 button{margin-left:auto;padding:.2rem .5rem;font-size:.72rem}
-.list{overflow:auto;min-height:0;flex:1 1 auto}
-.item{padding:.45rem .6rem;border-bottom:1px solid var(--line);cursor:pointer;
+.list{overflow:auto;flex:1 1 auto;min-height:7rem}
+.item{padding:.5rem .6rem;border-bottom:1px solid var(--line);cursor:pointer;
   display:flex;align-items:baseline;gap:.5rem}
 .item:hover{background:#161C22}
 .item.sel{background:#111A20;border-left:3px solid var(--beam);padding-left:calc(.6rem - 3px)}
@@ -128,7 +134,7 @@ tr.off td{color:var(--dim)}
 .item .x{color:var(--dim);font-size:.8rem;padding:0 .2rem}
 .item .x:hover{color:var(--alarm)}
 .form{padding:.5rem .6rem;border-top:1px solid var(--line);display:grid;
-  grid-template-columns:1fr 1fr;gap:.35rem}
+  grid-template-columns:1fr 1fr;gap:.35rem;flex:none;overflow:auto;max-height:60%}
 .form label{display:flex;flex-direction:column;gap:.15rem;font-size:.68rem}
 .form input,.form select{font-family:var(--mono);font-size:.9rem;color:var(--ink);
   background:#0B0F12;border:1px solid var(--line);padding:.4rem;width:100%;min-width:0}
@@ -146,7 +152,7 @@ tr.off td{color:var(--dim)}
   font-size:.8rem;color:var(--dim)}
 
 /* ================= footer ================= */
-footer{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;
+footer{display:grid;grid-template-columns:repeat(8,1fr);grid-auto-rows:1fr;
   gap:.4rem;padding:.5rem .8rem;border-top:1px solid var(--line)}
 button{font-family:var(--mono);font-size:clamp(.72rem,.95vw,1rem);color:var(--ink);
   background:var(--panel);border:1px solid var(--line);padding:.62rem .4rem;cursor:pointer;
@@ -280,15 +286,18 @@ button.go{border-color:var(--beam-dim)}
 <footer>
   <button data-key="w" class="go"><kbd>w</kbd>White card<em>A</em></button>
   <button data-key="y" class="go"><kbd>y</kbd>Yellow card<em>B</em></button>
+  <button id="point" class="go"><kbd>m</kbd>Point<em>L</em></button>
   <button data-key="r" class="go"><kbd>r</kbd>Report<em>X</em></button>
   <button data-key="i"><kbd>i</kbd>Light</button>
   <button data-key="g"><kbd>g</kbd>Gain</button>
+  <button data-key="n"><kbd>n</kbd>Samples</button>
   <button data-key="c"><kbd>c</kbd>Clear</button>
   <button class="tab on" data-view="live"><kbd>1</kbd>Live</button>
   <button class="tab" data-view="series"><kbd>2</kbd>Series</button>
   <button class="tab" data-view="result"><kbd>3</kbd>Result</button>
   <button class="tab" data-view="setup"><kbd>4</kbd>Setup</button>
   <button id="shot"><kbd>s</kbd>Screenshot<em>Y</em></button>
+  <button id="export"><kbd>e</kbd>Export</button>
   <button id="fs"><kbd>f</kbd>Full screen</button>
   <div class="pair">
     <button id="smaller"><kbd>-</kbd>A</button>
@@ -630,13 +639,15 @@ $("#fs").addEventListener("click", () => {
 addEventListener("keydown", e => {
   if(e.target.tagName === "INPUT" || e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
-  if("wyrigc".includes(k)){ e.preventDefault(); command(k); }
+  if("wyrigcn".includes(k)){ e.preventDefault(); command(k); }
   else if(k === "s"){ e.preventDefault(); $("#shot").click(); }
   else if(k === "f"){ e.preventDefault(); $("#fs").click(); }
   else if(k === "1"){ show("live", true); }
   else if(k === "2"){ show("series", true); }
   else if(k === "3"){ show("result", true); }
   else if(k === "4"){ show("setup", true); }
+  else if(k === "m"){ e.preventDefault(); measurePoint(); }
+  else if(k === "e"){ e.preventDefault(); $("#export").click(); }
   else if(k === "+" || k === "="){ setUi(ui + 2); }
   else if(k === "-"){ setUi(ui - 2); }
 });
@@ -645,7 +656,7 @@ addEventListener("keydown", e => {
    ABXY are wired as a gamepad, not as keys, so the browser reads them directly.
    Index order can differ per firmware, so an unmapped button says which one it
    was instead of doing nothing. */
-const PAD = { 0:"w", 1:"y", 2:"r", 3:"s" };      // A, B, X, Y
+const PAD = { 0:"w", 1:"y", 2:"r", 3:"s", 4:"m" };   // A, B, X, Y, L
 const PAD_NAME = { 0:"A white", 1:"B yellow", 2:"X report", 3:"Y screenshot" };
 const DPAD = { 12:"size+", 13:"size-", 14:"view-", 15:"view+" };
 const VIEWS = ["live","series","result","setup"];
@@ -660,6 +671,7 @@ function padTick(){
       const now = b.pressed || b.value > .5;
       if(now && !padPrev[i]){
         if(PAD[i] === "s") $("#shot").click();
+        else if(PAD[i] === "m") measurePoint();
         else if(PAD[i]) command(PAD[i]);
         else if(DPAD[i] === "size+") setUi(ui + 2);
         else if(DPAD[i] === "size-") setUi(ui - 2);
@@ -818,6 +830,20 @@ $("#s-save").onclick = () => {
     .then(s => { toast("campaign saved"); return loadAll().then(() => selectSession(s.id)); });
 };
 $("#p-measure").onclick = () => measurePoint();
+$("#point").onclick = () => measurePoint();
+$("#export").onclick = () => {
+  if(!sSel) return toast("pick a campaign first");
+  api("/sessions/" + sSel + "/export").then(data => {
+    const s = sessions.find(x => x.id === sSel) || {};
+    const name = ("halo_" + (s.title || "campaign")).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)],
+      {type: "application/json"}));
+    const a = document.createElement("a");
+    a.href = url; a.download = name + ".json"; a.click();
+    URL.revokeObjectURL(url);
+    toast("exported " + data.series.length + " series");
+  });
+};
 
 function measurePoint(){
   if(!sSel) return toast("pick a campaign first");
