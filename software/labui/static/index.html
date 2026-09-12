@@ -30,16 +30,63 @@ header{display:flex;align-items:center;gap:1rem;padding:.6rem .8rem;border-botto
 #lg-fill{fill:var(--beam-dim);transition:fill .4s}
 #lg-ring{fill:none;stroke:var(--beam-dim);stroke-width:40.3;stroke-miterlimit:10;
   transform-box:fill-box;transform-origin:50% 50%;transition:stroke .4s}
+#lg-core{fill:var(--beam-dim);transform-box:fill-box;transform-origin:50% 50%;
+  transition:fill .4s;opacity:.25}
 #lg-trace{display:none}
+
 body.up #lg-fill{fill:var(--beam)}
-body.up #lg-ring{stroke:var(--dial);animation:spin 9s linear infinite}
-body.busy #lg-ring{animation:spin 1.1s linear infinite}
+body.up #lg-ring{stroke:var(--dial);animation:seek 7s cubic-bezier(.34,1.56,.64,1) infinite}
+body.up #lg-core{fill:var(--beam);animation:core 3.4s ease-in-out infinite}
+body.busy #lg-ring{animation:spin 1.15s linear infinite}
+body.busy #lg-core{animation:core .75s ease-in-out infinite}
 body.lit #lg-fill{fill:var(--dial)}
 body.lit #lg-ring{stroke:var(--beam)}
+body.lit #lg-core{fill:var(--dial)}
+
+/* look right, settle, look left, settle. the overshoot in the timing function
+   gives it the swing, the long holds keep it from being busy */
+@keyframes seek{
+   0%   {transform:rotate(0deg)}
+  10%   {transform:rotate(26deg)}
+  26%   {transform:rotate(22deg)}
+  40%   {transform:rotate(22deg)}
+  50%   {transform:rotate(-24deg)}
+  66%   {transform:rotate(-20deg)}
+  80%   {transform:rotate(-20deg)}
+  92%   {transform:rotate(2deg)}
+ 100%   {transform:rotate(0deg)}
+}
+@keyframes core{
+   0%,100%{transform:scale(.72);opacity:.35}
+  50%    {transform:scale(1.06);opacity:1}
+}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){#lg-ring{animation:none!important}}
+@media (prefers-reduced-motion:reduce){#lg-ring,#lg-core{animation:none!important}}
 .names{display:flex;flex-direction:column;gap:.15rem;align-items:flex-start}
-.mark{font-size:1.5rem;letter-spacing:.02em;color:var(--dial);white-space:nowrap}
+.mark{font-size:1.5rem;letter-spacing:.02em;color:var(--dial);white-space:nowrap;
+  position:relative;display:inline-block}
+.mark::before,.mark::after{content:attr(data-text);position:absolute;inset:0;
+  letter-spacing:inherit;pointer-events:none;opacity:0;white-space:nowrap}
+.mark::before{color:var(--beam)}
+.mark::after{color:var(--needle)}
+body.up .mark::before{animation:glitchA 11s steps(1,end) infinite}
+body.up .mark::after{animation:glitchB 11s steps(1,end) infinite}
+/* three short bursts in eleven seconds, invisible the rest of the time */
+@keyframes glitchA{
+  0%,86%{opacity:0;transform:none;clip-path:none}
+  87%{opacity:.85;transform:translate(-2px,-1px);clip-path:inset(12% 0 62% 0)}
+  88%{opacity:.85;transform:translate(3px,1px);clip-path:inset(58% 0 18% 0)}
+  89%{opacity:.85;transform:translate(-1px,0);clip-path:inset(30% 0 44% 0)}
+  90%,100%{opacity:0;transform:none;clip-path:none}
+}
+@keyframes glitchB{
+  0%,86.5%{opacity:0;transform:none;clip-path:none}
+  87.5%{opacity:.7;transform:translate(2px,1px);clip-path:inset(40% 0 34% 0)}
+  88.5%{opacity:.7;transform:translate(-3px,-1px);clip-path:inset(8% 0 70% 0)}
+  89.5%{opacity:0;transform:none;clip-path:none}
+  100%{opacity:0}
+}
+@media (prefers-reduced-motion:reduce){.mark::before,.mark::after{animation:none!important}}
 .sub{font-size:.86rem;color:var(--dim);white-space:nowrap}
 .sub i{font-style:normal;color:var(--beam)}
 .st{margin-left:auto;display:flex;align-items:center;gap:.4rem;justify-content:flex-end;min-width:0}
@@ -123,7 +170,7 @@ tr.off td{color:var(--dim)}
   background:var(--panel)}
 .col h3{font-size:.78rem;font-weight:400;letter-spacing:.1em;color:var(--dim);
   padding:.45rem .6rem;border-bottom:1px solid var(--line);display:flex;align-items:center}
-.col h3 button{margin-left:auto;padding:.2rem .5rem;font-size:.72rem}
+.col h3 button{margin-left:auto;padding:.25rem .55rem;font-size:.72rem;color:var(--ink)}
 .list{overflow:auto;flex:1 1 auto;min-height:7rem}
 .item{padding:.5rem .6rem;border-bottom:1px solid var(--line);cursor:pointer;
   display:flex;align-items:baseline;gap:.5rem}
@@ -140,6 +187,7 @@ tr.off td{color:var(--dim)}
   background:#0B0F12;border:1px solid var(--line);padding:.4rem;width:100%;min-width:0}
 .form input:focus,.form select:focus{outline:none;border-color:var(--beam)}
 .form .wide{grid-column:span 2}
+.form button{color:var(--ink);border-color:var(--beam-dim);padding:.5rem}
 .pts{display:grid;grid-template-columns:repeat(auto-fill,minmax(5.6rem,1fr));gap:.3rem;
   padding:.5rem;overflow:auto;min-height:0;flex:1 1 auto;align-content:start}
 .pt{border:1px solid var(--line);background:#0B0F12;padding:.4rem .3rem;text-align:center;
@@ -154,17 +202,31 @@ tr.off td{color:var(--dim)}
 /* ================= footer ================= */
 footer{display:grid;grid-template-columns:repeat(8,1fr);grid-auto-rows:1fr;
   gap:.4rem;padding:.5rem .8rem;border-top:1px solid var(--line)}
-button{font-family:var(--mono);font-size:clamp(.72rem,.95vw,1rem);color:var(--ink);
+button{font-family:var(--mono);font-size:clamp(.72rem,.95vw,1rem);color:var(--dim);
   background:var(--panel);border:1px solid var(--line);padding:.62rem .4rem;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:.45rem;min-width:0;
-  white-space:nowrap;overflow:hidden}
-button:hover{border-color:var(--beam)}
+  white-space:nowrap;overflow:hidden;position:relative;transition:color .12s,
+  background .12s,border-color .12s}
+button::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent}
+button:hover{color:var(--ink);border-color:#33414C;background:#161C22}
+button:active{transform:translateY(1px)}
 button:focus-visible{outline:2px solid var(--beam);outline-offset:1px}
-button kbd{font:inherit;color:var(--beam);flex:none}
+button kbd{font:inherit;color:var(--beam);flex:none;opacity:.85}
 button em{font-style:normal;font-size:.72em;color:var(--dim);border:1px solid var(--line);
   padding:0 .35em;flex:none;margin-left:.1rem}
-button.tab.on{border-color:var(--beam);color:var(--beam)}
-button.go{border-color:var(--beam-dim)}
+
+/* the three that trigger a measurement carry the beam colour */
+button.go{color:var(--ink);border-color:var(--beam-dim)}
+button.go::before{background:var(--beam-dim)}
+button.go:hover{border-color:var(--beam);background:#10222B}
+button.go:hover::before{background:var(--beam)}
+
+/* the active view is filled, not just outlined, so it reads at a glance */
+button.tab.on{color:var(--bg);background:var(--beam);border-color:var(--beam)}
+button.tab.on kbd{color:var(--bg);opacity:.7}
+button.tab.on::before{background:var(--dial)}
+button.tab.on:hover{background:#00B4FF;color:var(--bg)}
+
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;min-width:0}
 .chip input{font-family:var(--mono);font-size:.95rem;color:var(--needle);background:transparent;
   border:none;width:4.6rem;padding:0;min-width:0}
@@ -194,10 +256,11 @@ button.go{border-color:var(--beam-dim)}
     <svg id="logo" viewBox="0 0 1024 1024" aria-label="CYB3RGUN">
       <path id="lg-fill" d="M450.6,880.8c-13.2-2.8-30.8-8-53-15.5-22.1-7.5-45.8-18.6-71-33.4-25.2-14.8-49.3-34.1-72.4-58-39.6-40.3-68.3-82.9-86.2-127.9-17.9-45-26.2-90.4-24.7-136.3,1.4-45.9,11.6-90.1,30.7-132.4,19.1-42.4,46-80.9,80.9-115.6,38.6-38.4,80.3-67.5,125-87.1,44.7-19.7,90.3-30.1,136.7-31.3,46.4-1.2,91.6,7,135.6,24.6,44,17.6,84.4,44.6,121.1,81.2,31.1,30.9,55.1,63.2,72,97,16.9,33.7,28.7,64.6,35.3,92.7l-98.9,39.4c-4.2-23-12.1-48.6-23.7-76.9-11.5-28.3-29.5-54.7-54-79-32-31.9-70-52.8-114.1-62.9-44-10.1-88.5-8.9-133.5,3.5-45,12.4-85.3,36.4-121.1,72-36.3,36.1-61.3,75.8-75.2,119.1-13.9,43.3-15.4,86.8-4.6,130.3,10.8,43.6,34.6,83.6,71.3,120.2,26.4,26.2,53.5,45.3,81.6,57.3,28,11.9,53.6,19.1,76.6,21.4l-34.6,97.7h0Z"/>
       <path id="lg-ring" d="M584.6,583.4c-34.3,34.1-89.9,34.1-124.2,0-34.3-34.1-34.3-89.4,0-123.6,34.3-34.1,89.9-34.1,124.2,0,34.3,34.1,34.3,89.4,0,123.6Z"/>
+      <circle id="lg-core" cx="522.5" cy="521.6" r="34"/>
       <path id="lg-trace" d="M450.6,880.8c-13.2-2.8-30.8-8-53-15.5-22.1-7.5-45.8-18.6-71-33.4-25.2-14.8-49.3-34.1-72.4-58-39.6-40.3-68.3-82.9-86.2-127.9-17.9-45-26.2-90.4-24.7-136.3,1.4-45.9,11.6-90.1,30.7-132.4,19.1-42.4,46-80.9,80.9-115.6,38.6-38.4,80.3-67.5,125-87.1,44.7-19.7,90.3-30.1,136.7-31.3,46.4-1.2,91.6,7,135.6,24.6,44,17.6,84.4,44.6,121.1,81.2,31.1,30.9,55.1,63.2,72,97,16.9,33.7,28.7,64.6,35.3,92.7l-98.9,39.4c-4.2-23-12.1-48.6-23.7-76.9-11.5-28.3-29.5-54.7-54-79-32-31.9-70-52.8-114.1-62.9-44-10.1-88.5-8.9-133.5,3.5-45,12.4-85.3,36.4-121.1,72-36.3,36.1-61.3,75.8-75.2,119.1-13.9,43.3-15.4,86.8-4.6,130.3,10.8,43.6,34.6,83.6,71.3,120.2,26.4,26.2,53.5,45.3,81.6,57.3,28,11.9,53.6,19.1,76.6,21.4l-34.6,97.7h0Z"/>
     </svg>
     <div class="names">
-      <span class="mark" id="mark">HALO RESEARCH LAB</span>
+      <span class="mark" id="mark" data-text="HALO RESEARCH LAB">HALO RESEARCH LAB</span>
       <span class="sub" id="sub">CYB3RGUN optical gauge probe</span>
     </div>
   </div>
