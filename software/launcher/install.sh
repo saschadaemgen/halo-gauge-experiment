@@ -52,7 +52,7 @@ unclutter --timeout 2 &
     curl -s -o /dev/null http://127.0.0.1:8750/ && break
     sleep 0.25
   done
-  $BROWSER --kiosk --noerrdialogs --disable-infobars \
+  $BROWSER --kiosk --password-store=basic --noerrdialogs --disable-infobars \
     --disable-session-crashed-bubble --check-for-update-interval=31536000 \
     --start-fullscreen --app=http://127.0.0.1:8750 ) &
 AUTOEOF
