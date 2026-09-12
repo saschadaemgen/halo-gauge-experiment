@@ -103,7 +103,14 @@ def card_page(c, args, value, index, total):
     face = HexColor(args.dial_colour)
     needle = HexColor(args.needle_colour)
     d = args.dial * args.scale
-    cx, cy = x0 + CARD / 2 * mm, y0 + CARD / 2 * mm
+    # The sensor sits at a fixed point in the jig, args.sensor_offset above the
+    # card centre. At any scale other than 1:1 the dial has to move so that this
+    # point falls on the measuring radius, otherwise the sensor stares at the hub.
+    shift = 0.0
+    if args.centre == "sensor":
+        shift = args.sensor_offset - args.radius * args.scale
+    cx = x0 + CARD / 2 * mm
+    cy = y0 + CARD / 2 * mm + shift * mm
 
     c.setFillColor(face)
     c.rect(x0, y0, CARD * mm, CARD * mm, stroke=0, fill=1)
@@ -129,6 +136,16 @@ def card_page(c, args, value, index, total):
         c.circle(cx, cy, r_meas * mm, stroke=1, fill=0)
         c.setDash()
 
+    if args.show_radius:
+        sx, sy = x0 + CARD / 2 * mm, y0 + CARD / 2 * mm + args.sensor_offset * mm
+        c.setStrokeColor(Color(0.62, 0.62, 0.62))
+        c.setLineWidth(0.2 * mm)
+        c.setDash(1, 2)
+        c.circle(sx, sy, 2.4 * mm, stroke=1, fill=0)
+        c.setDash()
+        c.line(sx - 4 * mm, sy, sx - 2.8 * mm, sy)
+        c.line(sx + 2.8 * mm, sy, sx + 4 * mm, sy)
+
     # cut line and crop marks
     c.setStrokeColor(GREY)
     c.setLineWidth(0.15 * mm)
@@ -152,9 +169,10 @@ def card_page(c, args, value, index, total):
                            args.needle_hub * args.scale * mm,
                            args.needle_tip * args.scale * mm) / mm
     c.drawString(x0, y0 + CARD * mm + 3 * mm,
-                 "dial %g mm at %g:1, needle %.2f mm wide at r %g mm, sweep %g deg, %d of %d"
+                 "dial %g mm at %g:1, needle %.2f mm wide at r %g mm, sweep %g deg, "
+                 "dial centre %+.1f mm, %d of %d"
                  % (args.dial, args.scale, w_at, args.radius * args.scale,
-                    args.sweep, index, total))
+                    args.sweep, shift, index, total))
     c.setFont("Helvetica", 6.5)
     c.drawString(x0, y0 - 12 * mm,
                  "PRINT AT 100 %, NO SCALING. halo-gauge-experiment, Sascha Daemgen. "
@@ -199,6 +217,11 @@ def main():
     ap.add_argument("--from", dest="start", type=float, default=None)
     ap.add_argument("--to", dest="stop", type=float, default=None)
     ap.add_argument("--step", type=float, default=0.5)
+    ap.add_argument("--sensor-offset", type=float, default=7.0,
+                    help="fixed distance in mm from the card centre to the sensor in the jig")
+    ap.add_argument("--centre", choices=["card", "sensor"], default="sensor",
+                    help="card: dial in the middle of the card. sensor: shift the dial so the "
+                         "jig's fixed sensor position lands on the measuring radius")
     ap.add_argument("--show-radius", action="store_true",
                     help="draw the measuring radius as a dashed ring")
     ap.add_argument("-o", "--out", default=None)
@@ -211,9 +234,13 @@ def main():
         values.append(round(v, 6))
         v += args.step
 
-    if args.dial * args.scale > 96:
-        raise SystemExit("dial %g mm at %g:1 is %g mm and does not fit a 100 mm card"
-                         % (args.dial, args.scale, args.dial * args.scale))
+    shift = (args.sensor_offset - args.radius * args.scale) if args.centre == "sensor" else 0.0
+    reach = args.dial * args.scale / 2 + abs(shift)
+    if reach > 49:
+        raise SystemExit(
+            "dial %g mm at %g:1 with a %+.1f mm shift reaches %.1f mm from the card centre, "
+            "a 100 mm card only holds 49. use a smaller scale or --centre card."
+            % (args.dial, args.scale, shift, reach))
 
     out = args.out or ("hge_cards_%gx_%s_to_%s.pdf" %
                        (args.scale, fmt_value(start, args.step), fmt_value(stop, args.step)))
@@ -236,6 +263,9 @@ def main():
           % (w_at / args.scale, 1.6 * args.scale))
     print("so the aperture in the jig should be about %.1f mm for an honest test."
           % (1.6 * args.scale))
+    if args.centre == "sensor":
+        print("dial centre shifted %+.1f mm so the sensor at %g mm sits on the measuring radius."
+              % (shift, args.sensor_offset))
 
 
 if __name__ == "__main__":
