@@ -153,7 +153,7 @@ body.fx-drop header,body.fx-drop main,body.fx-drop footer{filter:contrast(1.6) s
       <circle class="bcore" cx="522.5" cy="521.6" r="34"/>
     </svg>
     <div class="btxt">
-      <span class="bmark" data-text="CYB3RGUN">CYB<b>3</b>RGUN</span>
+      <span class="bmark" data-text="CYB3RGUN">CYB<b>3R</b>GUN</span>
       <span class="bsub">RESEARCH TERMINAL</span>
     </div>
   </div>
@@ -188,7 +188,7 @@ body.fx-drop header,body.fx-drop main,body.fx-drop footer{filter:contrast(1.6) s
     <circle id="lg-core" cx="522.5" cy="521.6" r="34"/>
   </svg>
   <div class="names">
-    <span class="mark" id="mark" data-text="CYB3RGUN">CYB<b>3</b>RGUN</span>
+    <span class="mark" id="mark" data-text="CYB3RGUN">CYB<b>3R</b>GUN</span>
     <span class="sub" id="sub">RESEARCH TERMINAL</span>
   </div>
   <div class="meta">
@@ -240,7 +240,7 @@ function render(cfg){
   apps = cfg.apps || [];
   const title = cfg.title || "CYB3RGUN";
   // the word carries the beam colour, the 3 stays white
-  $("#mark").innerHTML = title.replace(/3/g, "<b>3</b>");
+  $("#mark").innerHTML = title.replace(/3R/g, "<b>3R</b>");
   $("#mark").dataset.text = title;
   $("#sub").textContent = cfg.subtitle || "";
   $("#m-host").textContent = cfg.host || "-";
