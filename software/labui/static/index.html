@@ -377,10 +377,11 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   transform-box:view-box;transform-origin:522px 521px;animation:bootring 1.6s ease-out both}
 .bcore{fill:var(--dial);animation:bootcore 1.1s ease-out .35s both}
 .btxt{display:flex;flex-direction:column;gap:.25rem}
-.bmark{font-size:min(7vh,2.6rem);letter-spacing:.22em;color:var(--dial);position:relative;
+.bmark{font-size:min(7vh,2.6rem);letter-spacing:.22em;color:var(--beam);position:relative;
   animation:bootin .5s .25s both}
+.bmark b,.mark b{font-weight:inherit;color:var(--dial)}
 .bmark::before,.bmark::after{content:attr(data-text);position:absolute;left:0;top:0;
-  letter-spacing:inherit;background:var(--bg)}
+  letter-spacing:inherit;background:var(--bg);opacity:0}
 .bmark::before{color:var(--beam);animation:bootgA 1.5s steps(1,end) .3s}
 .bmark::after{color:var(--needle);animation:bootgB 1.5s steps(1,end) .3s}
 .bsub{font-size:min(2.4vh,.95rem);letter-spacing:.42em;color:var(--dim);
@@ -580,7 +581,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
       <circle class="bcore" cx="522.5" cy="521.6" r="34"/>
     </svg>
     <div class="btxt">
-      <span class="bmark" data-text="CYB3RGUN">CYB3RGUN</span>
+      <span class="bmark" data-text="CYB3RGUN">CYB<b>3</b>RGUN</span>
       <span class="bsub">HALO RESEARCH LAB</span>
     </div>
   </div>
