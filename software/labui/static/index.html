@@ -274,6 +274,98 @@ button.tab.on:hover{background:#102936;color:var(--beam)}
 #cd .bar div{height:100%;width:0;background:var(--dial);animation:settlebar .8s linear both}
 @keyframes settlebar{to{width:100%}}
 
+/* the footer is polled like a bus: one cell lights at a time, the two rows
+   running in opposite directions, and the direction flips every pass */
+footer{position:relative}
+button.ping, .pair.ping{animation:ping .42s ease-out}
+@keyframes ping{
+  0%  {box-shadow:inset 0 0 0 0 rgba(0,159,227,0);border-color:var(--line)}
+  22% {box-shadow:inset 0 0 1.4rem -.2rem rgba(0,159,227,.55),0 0 .5rem rgba(0,159,227,.3);
+       border-color:var(--beam)}
+  100%{box-shadow:inset 0 0 0 0 rgba(0,159,227,0)}
+}
+button.go.ping{animation:pinggo .42s ease-out}
+@keyframes pinggo{
+  0%  {box-shadow:none}
+  22% {box-shadow:inset 0 0 1.6rem -.2rem rgba(252,184,3,.4),0 0 .6rem rgba(0,159,227,.35);
+       border-color:var(--beam)}
+  100%{box-shadow:none}
+}
+
+/* full screen glitch, built on real SVG filters */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
+#fx.on{opacity:1}
+#fx .scan{position:absolute;left:0;right:0;height:28%;
+  background:repeating-linear-gradient(180deg,rgba(0,159,227,.14) 0 1px,transparent 1px 3px);
+  box-shadow:0 0 3rem rgba(0,159,227,.25)}
+#fx .dark{position:absolute;inset:0;background:#000;opacity:.55}
+#fx .line{position:absolute;left:0;right:0;height:2px;background:var(--beam);
+  box-shadow:0 0 1.2rem var(--beam)}
+body.fx-drop main,body.fx-drop header,body.fx-drop footer{
+  filter:contrast(1.6) saturate(.15) brightness(.8)}
+
+/* ---------- boot splash, two seconds ---------- */
+#boot{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;overflow:hidden}
+#boot.gone{animation:bootout .45s ease-in forwards}
+#boot.off{display:none}
+.bwrap{display:flex;align-items:center;gap:1.6rem}
+.blogo{width:min(22vh,7rem);height:min(22vh,7rem);overflow:visible;
+  animation:bootlogo 1.5s cubic-bezier(.2,.9,.2,1) both}
+.bfill{fill:var(--beam)}
+.bring{fill:none;stroke:var(--dial);stroke-width:40.3;stroke-miterlimit:10;
+  transform-box:view-box;transform-origin:522px 521px;animation:bootring 1.6s ease-out both}
+.bcore{fill:var(--dial);animation:bootcore 1.1s ease-out .35s both}
+.btxt{display:flex;flex-direction:column;gap:.25rem}
+.bmark{font-size:min(7vh,2.6rem);letter-spacing:.22em;color:var(--dial);position:relative;
+  animation:bootin .5s .25s both}
+.bmark::before,.bmark::after{content:attr(data-text);position:absolute;left:0;top:0;
+  letter-spacing:inherit;background:var(--bg)}
+.bmark::before{color:var(--beam);animation:bootgA 1.5s steps(1,end) .3s}
+.bmark::after{color:var(--needle);animation:bootgB 1.5s steps(1,end) .3s}
+.bsub{font-size:min(2.4vh,.95rem);letter-spacing:.42em;color:var(--dim);
+  animation:bootin .5s .45s both}
+.bbar{width:min(46vw,26rem);height:3px;background:#10161B;overflow:hidden}
+.bbar div{height:100%;width:0;background:var(--beam);box-shadow:0 0 .6rem var(--beam);
+  animation:bootbar 1.55s cubic-bezier(.6,0,.15,1) .2s both}
+.blines{position:absolute;left:6vw;bottom:7vh;font-size:min(1.9vh,.8rem);color:var(--dim);
+  line-height:1.7;text-align:left}
+.blines b{font-weight:400;color:var(--beam)}
+.bscan{position:absolute;left:0;right:0;height:2px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--beam) 12%,#fff 50%,
+    var(--beam) 88%,transparent);box-shadow:0 0 1.6rem rgba(0,159,227,.7);
+  opacity:.9;animation:bootscan 1.9s cubic-bezier(.55,0,.35,1) both}
+.bgrid{position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background:repeating-linear-gradient(180deg,rgba(0,159,227,.055) 0 1px,
+    transparent 1px 4px)}
+@keyframes bootlogo{from{opacity:0;transform:scale(.4) rotate(-60deg)}
+  to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes bootring{from{stroke-width:170;opacity:0}60%{stroke-width:40.3;opacity:1}
+  to{stroke-width:40.3;opacity:1}}
+@keyframes bootcore{from{transform:scale(3);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes bootin{from{opacity:0;transform:translateY(.5rem)}to{opacity:1;transform:none}}
+@keyframes bootbar{from{width:0}to{width:100%}}
+@keyframes bootscan{0%{top:-2%}45%{top:101%}55%{top:101%}100%{top:-2%}}
+@keyframes bootout{to{opacity:0;transform:scale(1.06);filter:brightness(2.4)}}
+@keyframes bootgA{
+  0%,14%{opacity:0}15%{opacity:1;transform:translate(-6px,-2px);clip-path:inset(8% 0 62% 0)}
+  17%{opacity:1;transform:translate(7px,2px);clip-path:inset(54% 0 18% 0)}
+  19%{opacity:0}
+  52%{opacity:0}53%{opacity:1;transform:translate(5px,1px);clip-path:inset(30% 0 44% 0)}
+  55%{opacity:0}100%{opacity:0}
+}
+@keyframes bootgB{
+  0%,15%{opacity:0}16%{opacity:.9;transform:translate(6px,2px);clip-path:inset(40% 0 34% 0)}
+  18%{opacity:0}
+  53%{opacity:0}54%{opacity:.9;transform:translate(-6px,-2px);clip-path:inset(6% 0 70% 0)}
+  56%{opacity:0}100%{opacity:0}
+}
+@media (prefers-reduced-motion:reduce){
+  #boot *{animation:none!important}
+  button.ping,.pair.ping{animation:none}
+  #fx{display:none}
+}
+
 #toast{position:fixed;left:.8rem;bottom:4.2rem;font-size:.9rem;color:var(--ink);
   background:var(--panel);border:1px solid var(--beam);padding:.5rem .7rem;opacity:0;
   pointer-events:none;transition:opacity .2s}
