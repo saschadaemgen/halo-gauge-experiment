@@ -12,7 +12,7 @@ anyone who does has to pass the same freedom on.
 
 Full texts are in [`licenses/`](licenses).
 
-Copyright 2026 Sascha Daemgen.
+Copyright 2026 Sascha Dämgen.
 
 ## What that means in practice
 

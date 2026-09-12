@@ -175,7 +175,7 @@ def card_page(c, args, value, index, total):
                     args.sweep, shift, index, total))
     c.setFont("Helvetica", 6.5)
     c.drawString(x0, y0 - 12 * mm,
-                 "PRINT AT 100 %, NO SCALING. halo-gauge-experiment, Sascha Daemgen. "
+                 "PRINT AT 100 %, NO SCALING. halo-gauge-experiment, Sascha Dämgen. "
                  "Original artwork, not a copy of any manufacturer's dial.")
     ry = y0 - 6 * mm
     c.setStrokeColor(black)
@@ -247,7 +247,7 @@ def main():
     out = os.path.abspath(out)
     c = canvas.Canvas(out, pagesize=(210 * mm, 297 * mm))
     c.setTitle("halo-gauge-experiment test cards")
-    c.setAuthor("Sascha Daemgen")
+    c.setAuthor("Sascha Dämgen")
     for i, value in enumerate(values, 1):
         card_page(c, args, value, i, len(values))
     c.save()

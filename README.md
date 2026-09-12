@@ -282,5 +282,5 @@ any manufacturer's dial: only the geometry follows a real gauge, and geometry
 is technical, not protectable.
 
 <p align="center">
-  <sub>Sascha Daemgen, 2026. Measured, not assumed.</sub>
+  <sub>Sascha Dämgen, 2026. Measured, not assumed.</sub>
 </p>

@@ -282,6 +282,24 @@ button.tab.on:hover{background:#102936;color:var(--beam)}
 #cd .what{font-size:.82rem;letter-spacing:.3em;color:var(--dim);
   transition:color .3s ease,letter-spacing .3s ease}
 #cd.armed .what{color:var(--needle);letter-spacing:.36em}
+/* stage two: the count. a ring sweeps one full turn per second around the
+   digit, so the second is visible and not just counted. */
+#cd .count{position:relative;width:clamp(6rem,20vh,9rem);height:clamp(6rem,20vh,9rem);
+  display:none;align-items:center;justify-content:center;margin:.2rem 0}
+#cd.counting .count{display:flex}
+#cd .count svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+#cd .count circle{fill:none;stroke-width:3}
+#cd .count .track{stroke:#1A222A}
+#cd .count .arc{stroke:var(--beam);stroke-linecap:round;
+  filter:drop-shadow(0 0 .4rem rgba(0,159,227,.6))}
+#cd .count b{font-weight:400;font-size:clamp(3rem,11vh,4.6rem);line-height:1;
+  color:var(--dial);font-variant-numeric:tabular-nums}
+#cd .count b.tick{animation:tick .34s cubic-bezier(.2,.9,.25,1)}
+@keyframes tick{from{transform:scale(1.65);opacity:0;filter:blur(2px)}
+  to{transform:scale(1);opacity:1;filter:none}}
+#cd.counting .card{transform:scale(.72);opacity:.55}
+#cd.counting .row{opacity:0;max-height:0;margin-top:-.8rem;pointer-events:none}
+
 #cd .card{font-size:clamp(1.9rem,7.4vh,3.2rem);line-height:1;color:var(--needle);
   letter-spacing:.04em;text-align:center;
   transition:color .3s ease,transform .34s cubic-bezier(.2,.9,.25,1),opacity .3s ease}
@@ -536,10 +554,18 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   <span class="what" id="cd-what">INSERT CARD</span>
   <span class="card" id="cd-card">white</span>
   <span class="hint" id="cd-hint">Put the card in the pocket, close the stack, take your hand off.</span>
+  <div class="count">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle class="track" cx="50" cy="50" r="45"/>
+      <circle class="arc" id="cd-arc" cx="50" cy="50" r="45"
+              stroke-dasharray="283" stroke-dashoffset="283"/>
+    </svg>
+    <b id="cd-digit">3</b>
+  </div>
   <span class="warn" id="cd-warn"></span>
   <div class="bar"><div id="cd-bar"></div></div>
   <div class="row">
-    <button class="ok" id="cd-ok"><kbd>enter</kbd>Measure</button>
+    <button class="ok" id="cd-ok"><kbd>enter</kbd>Confirm</button>
     <button id="cd-cancel"><kbd>esc</kbd>Cancel</button>
   </div>
 </div></div>
@@ -881,14 +907,16 @@ function armed(key, label){
   pending = {key, label};
   const cd = $("#cd");
   const name = label || (key === "y" ? "yellow" : "white");
-  $("#cd-what").textContent = label ? "SET THE NEEDLE" : "INSERT CARD";
+  $("#cd-what").textContent = label ? "POSITION THE SPECIMEN" : "PLACE THE SPECIMEN";
   $("#cd-card").textContent = name;
   $("#cd-card").className = "card" + (label || key === "y" ? "" : " white");
   $("#cd-hint").textContent = label
-    ? "Put the card for this position in the pocket, close the stack, hands off."
-    : "Put the " + name + " card in the pocket, close the stack, hands off.";
-  cd.classList.remove("armed", "hot", "lift");
+    ? "Insert the card for this needle position, close the stack, then confirm."
+    : "Insert the " + name + " reference card, close the stack, then confirm.";
+  clearArm();
+  cd.classList.remove("counting", "armed", "hot", "lift");
   $("#cd-warn").textContent = "";
+  $("#cd-digit").textContent = "3";
   cd.classList.add("on");
   setTimeout(() => $("#cd-ok").focus(), 30);
 }
@@ -897,47 +925,71 @@ function armed(key, label){
    open, the warning takes the place of the buttons, the bar fills, and only
    then does the command go out. Nothing switches instantly. */
 const WARNINGS = [
-  "OPTICAL HAZARD   470 nm EMITTER ARMED   DO NOT LOOK INTO THE APERTURE",
-  "FIXTURE SEALED   ANY CONTACT VOIDS THE SERIES",
-  "DIFFERENTIAL MODE   AMBIENT IS SAMPLED WITH THE EMITTER DARK",
-  "SPECIMEN UNDER BEAM   KEEP THE BENCH STILL UNTIL THE BAR CLEARS"
+  "Keep external emitters clear of the reflectance chamber. Do not touch the fixture.",
+  "Chamber sealed. Any stray light or contact during sampling voids the series.",
+  "Differential mode. Ambient is sampled with the emitter dark, hold the bench still.",
+  "470 nm emitter armed. Do not look into the aperture, do not open the stack."
 ];
 
+let armTimers = [];
+function clearArm(){ armTimers.forEach(clearTimeout); armTimers = []; }
+const later = (fn, ms) => armTimers.push(setTimeout(fn, ms));
+
+/* Three stages, each one flowing into the next.
+     1  place the specimen and confirm
+     2  three seconds of counting while the fixture settles
+     3  the series is initiated and the warning stands until the command is out */
 function armedGo(){
   if(!pending) return;
-  const cd = $("#cd"), bar = $("#cd-bar");
-  cd.classList.add("armed");
-  $("#cd-what").textContent = "CHAMBER ARMED";
-  $("#cd-hint").textContent = "Sampling begins when the bar clears.";
-  $("#cd-warn").textContent = WARNINGS[Math.floor(Math.random() * WARNINGS.length)];
-  bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
+  const cd = $("#cd"), digit = $("#cd-digit"), arc = $("#cd-arc");
+  const STEP = 900;
 
-  setTimeout(() => {
+  cd.classList.add("counting");
+  $("#cd-what").textContent = "STABILISING";
+  $("#cd-hint").textContent = "Fixture closed. Step back from the bench.";
+
+  [3, 2, 1].forEach((n, i) => later(() => {
+    digit.textContent = n;
+    digit.classList.remove("tick"); void digit.offsetWidth; digit.classList.add("tick");
+    arc.style.transition = "none";
+    arc.style.strokeDashoffset = 283;
+    void arc.getBoundingClientRect();
+    arc.style.transition = "stroke-dashoffset " + STEP + "ms linear";
+    arc.style.strokeDashoffset = 0;
+  }, i * STEP));
+
+  later(() => {
+    cd.classList.remove("counting");
+    cd.classList.add("armed");
+    $("#cd-what").textContent = "MEASUREMENT INITIATED";
+    $("#cd-hint").textContent = "sampling in progress";
+    $("#cd-warn").textContent = WARNINGS[Math.floor(Math.random() * WARNINGS.length)];
+    const bar = $("#cd-bar");
+    bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
+  }, 3 * STEP);
+
+  later(() => {
     cd.classList.add("hot");
-    $("#cd-what").textContent = "SAMPLING";
-    $("#cd-hint").textContent = "hands off the fixture";
-  }, 880);
-
-  setTimeout(() => {
     if(!pending) return;
     send(pending.key);
     pending = null;
-    cd.classList.add("lift");
-  }, 1180);
+  }, 3 * STEP + 620);
 
-  setTimeout(() => {
-    cd.classList.remove("on", "armed", "hot", "lift");
+  later(() => cd.classList.add("lift"), 3 * STEP + 980);
+  later(() => {
+    cd.classList.remove("on", "counting", "armed", "hot", "lift");
     counting = false;
-  }, 1640);
+  }, 3 * STEP + 1420);
 }
 
 function armedCancel(){
-  if(!pending) return;                      // already under way, let it finish
+  if(!pending) return;                      // the command is already out
+  clearArm();
   pending = null;
   const cd = $("#cd");
   cd.classList.add("lift");
   setTimeout(() => {
-    cd.classList.remove("on", "armed", "hot", "lift");
+    cd.classList.remove("on", "counting", "armed", "hot", "lift");
     counting = false;
   }, 440);
 }
