@@ -315,6 +315,8 @@ button.tab.on:hover{background:#102936;color:var(--beam)}
 #cd .row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;width:100%;
   transition:opacity .22s ease,max-height .3s ease,margin .3s ease}
 #cd .row button{font-size:1.05rem;padding:.85rem}
+#cd .keys{font-size:.74rem;letter-spacing:.16em;color:var(--dim);margin-top:-.2rem}
+#cd.counting .keys,#cd.armed .keys{opacity:0;transition:opacity .2s}
 #cd .ok{color:var(--beam);border-color:var(--beam);background:#0C1E28}
 #cd .ok:hover{background:#102936}
 #cd.armed .row{opacity:0;max-height:0;margin-top:-.8rem;pointer-events:none}
@@ -530,8 +532,8 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
 <footer>
   <button data-key="w" class="go"><kbd>w</kbd>White<em>A</em></button>
   <button data-key="y" class="go"><kbd>y</kbd>Yellow<em>B</em></button>
-  <button id="point" class="go"><kbd>m</kbd>Point</button>
-  <button data-key="r" class="go"><kbd>r</kbd>Report<em>X</em></button>
+  <button id="point" class="go"><kbd>m</kbd>Point<em>X</em></button>
+  <button data-key="r" class="go"><kbd>r</kbd>Report<em>Y</em></button>
   <button data-key="i"><kbd>i</kbd>Light</button>
   <button data-key="g"><kbd>g</kbd>Gain</button>
   <button data-key="n"><kbd>n</kbd>Samples</button>
@@ -540,7 +542,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   <button class="tab" data-view="series"><kbd>2</kbd>Series</button>
   <button class="tab" data-view="result"><kbd>3</kbd>Result</button>
   <button class="tab" data-view="setup"><kbd>4</kbd>Setup</button>
-  <button id="shot"><kbd>s</kbd>Shot<em>Y</em></button>
+  <button id="shot"><kbd>s</kbd>Shot</button>
   <button id="export"><kbd>e</kbd>Export</button>
   <button id="menu"><kbd>esc</kbd>Menu</button>
   <div class="pair">
@@ -568,6 +570,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
     <button class="ok" id="cd-ok"><kbd>enter</kbd>Confirm</button>
     <button id="cd-cancel"><kbd>esc</kbd>Cancel</button>
   </div>
+  <span class="keys">KEYBOARD OR MOUSE ONLY</span>
 </div></div>
 <div id="boot">
   <div class="bwrap">
@@ -918,7 +921,7 @@ function armed(key, label){
   $("#cd-warn").textContent = "";
   $("#cd-digit").textContent = "3";
   cd.classList.add("on");
-  setTimeout(() => $("#cd-ok").focus(), 30);
+  setTimeout(() => $("#cd-ok").focus(), 260);   // after any key that opened it has passed
 }
 
 /* Arming is one continuous move: the card name settles back, the hazard bands
@@ -1041,375 +1044,37 @@ addEventListener("keydown", e => {
 
 /* ---------- uConsole game buttons ----------
    ABXY are wired as a gamepad, not as keys, so the browser reads them directly.
-   Index order can differ per firmware, so an unmapped button says which one it
-   was instead of doing nothing. */
-const PAD = { 0:"w", 1:"y", 2:"r", 3:"s", 4:"m" };   // A, B, X, Y, L
-const PAD_NAME = { 0:"A white", 1:"B yellow", 2:"X report", 3:"Y screenshot" };
-const DPAD = { 12:"size+", 13:"size-", 14:"view-", 15:"view+" };
-const VIEWS = ["live","series","result","setup"];
+   They start measurements only. The confirmation dialog is deliberately not
+   reachable from the pad: a spurious reading there would start a series on its
+   own, and that happened. */
+const PAD = { 0:"white", 1:"yellow", 2:"point", 3:"report" };
+const PAD_LABEL = { 0:"A white", 1:"B yellow", 2:"X point", 3:"Y report" };
 let padPrev = [], padSeen = false;
+const padReady = Date.now() + 2500;        // ignore whatever the pad says while it settles
 
 function padTick(){
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   for(const p of pads){
     if(!p) continue;
-    if(!padSeen){ padSeen = true; toast("game buttons ready: " + p.id.slice(0,28)); }
-    p.buttons.forEach((b,i) => {
+    if(!padSeen){ padSeen = true; toast("game buttons ready: " + p.id.slice(0, 26)); }
+    p.buttons.forEach((b, i) => {
       const now = b.pressed || b.value > .5;
-      if(now && !padPrev[i]){
-        if(counting){ if(i === 0) armedGo(); else if(i === 1) armedCancel(); padPrev[i] = now; return; }
-        if(PAD[i] === "s") $("#shot").click();
-        else if(PAD[i] === "m") measurePoint();
-        else if(PAD[i]) command(PAD[i]);
-        else if(DPAD[i] === "size+") setUi(ui + 2);
-        else if(DPAD[i] === "size-") setUi(ui - 2);
-        else if(DPAD[i]){
-          const cur = VIEWS.indexOf($("#v-name").textContent);
-          const next = (cur + (DPAD[i] === "view+" ? 1 : VIEWS.length - 1)) % VIEWS.length;
-          show(VIEWS[next], true);
-        }
-        else toast("button " + i + " is not mapped yet");
-      }
+      const edge = now && !padPrev[i];
       padPrev[i] = now;
+      if(!edge || Date.now() < padReady) return;
+      if(counting) return;                  // the dialog is keyboard and mouse only
+      const what = PAD[i];
+      if(what === "white")  command("w");
+      else if(what === "yellow") command("y");
+      else if(what === "point")  measurePoint();
+      else if(what === "report") send("r");
+      else toast("button " + i + " is not mapped");
     });
-    // the d-pad may also arrive as an axis pair
-    if(p.axes && p.axes.length >= 2){
-      const ax = Math.round(p.axes[0]), ay = Math.round(p.axes[1]);
-      if(ax !== padPrev.ax){
-        if(ax === 1 || ax === -1){
-          const cur = VIEWS.indexOf($("#v-name").textContent);
-          show(VIEWS[(cur + (ax > 0 ? 1 : VIEWS.length - 1)) % VIEWS.length], true);
-        }
-        padPrev.ax = ax;
-      }
-      if(ay !== padPrev.ay){
-        if(ay === -1) setUi(ui + 2);
-        if(ay === 1) setUi(ui - 2);
-        padPrev.ay = ay;
-      }
-    }
   }
   requestAnimationFrame(padTick);
 }
-addEventListener("gamepadconnected", e => toast("game pad: " + e.gamepad.id.slice(0,30)));
+addEventListener("gamepadconnected", e => toast("game pad: " + e.gamepad.id.slice(0, 30)));
 requestAnimationFrame(padTick);
-
-/* ---------- setup: gauges, campaigns, needle positions ---------- */
-const GF = ["manufacturer","model","dial_mm","unit","range_min","range_max",
-            "sweep_deg","needle_colour","notes"];
-const SF = ["title","sensor","aperture","scale","point_step","point_min","point_max","notes"];
-let gauges = [], sessions = [], points = [], gSel = null, sSel = null, nextPoint = null;
-
-const api = (path, method, body) =>
-  fetch("/api" + path, {method: method || "GET",
-    headers: {"Content-Type": "application/json"},
-    body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
-
-function fillForm(prefix, fields, obj){
-  fields.forEach(f => { const el = $("#" + prefix + "-" + f); if(el) el.value = (obj && obj[f] != null) ? obj[f] : ""; });
-}
-
-function renderGauges(){
-  $("#g-list").innerHTML = gauges.map(g =>
-    `<div class="item ${gSel === g.id ? "sel" : ""}" data-id="${g.id}">
-       <span class="t">${g.manufacturer} ${g.model}</span>
-       <span class="s">${g.dial_mm} mm, ${g.range_min} to ${g.range_max} ${g.unit}</span>
-       <span class="x" data-del="${g.id}">del</span></div>`).join("")
-    || `<div class="bar">no gauge yet</div>`;
-  $("#g-list").querySelectorAll(".item").forEach(el => el.onclick = ev => {
-    if(ev.target.dataset.del){
-      if(!confirm("delete this gauge?")) return;
-      return api("/gauges/" + ev.target.dataset.del, "DELETE").then(loadAll);
-    }
-    gSel = +el.dataset.id;
-    fillForm("g", GF, gauges.find(g => g.id === gSel));
-    renderGauges();
-  });
-}
-
-function renderSessions(){
-  const mine = gSel ? sessions.filter(s => s.gauge_id === gSel) : sessions;
-  $("#s-list").innerHTML = mine.map(s =>
-    `<div class="item ${sSel === s.id ? "sel" : ""}" data-id="${s.id}">
-       <span class="t">${s.title || "untitled"}</span>
-       <span class="s">${s.n_series} series, step ${s.point_step}</span>
-       <span class="x" data-del="${s.id}">del</span></div>`).join("")
-    || `<div class="bar">no campaign yet</div>`;
-  $("#s-list").querySelectorAll(".item").forEach(el => el.onclick = ev => {
-    if(ev.target.dataset.del){
-      if(!confirm("delete this campaign and all its measurements?")) return;
-      return api("/sessions/" + ev.target.dataset.del, "DELETE").then(loadAll);
-    }
-    selectSession(+el.dataset.id);
-  });
-}
-
-function selectSession(id){
-  sSel = id;
-  const s = sessions.find(x => x.id === id);
-  fillForm("s", SF, s);
-  if(s && s.aperture) $("#ap").value = s.aperture;
-  api("/active", "POST", {session_id: id}).then(() => pushMeta());
-  renderSessions();
-  loadPoints();
-}
-
-function loadPoints(){
-  if(!sSel){ $("#p-list").innerHTML = ""; $("#p-bar").textContent = "no campaign selected"; return; }
-  api("/sessions/" + sSel + "/points").then(p => {
-    points = p;
-    const s = sessions.find(x => x.id === sSel) || {};
-    nextPoint = points.find(x => !x.done) || null;
-    $("#p-list").innerHTML = points.map(x =>
-      `<div class="pt ${x.done ? "done" : ""} ${nextPoint && x.label === nextPoint.label ? "cur" : ""}"
-            data-label="${x.label}">${x.label}</div>`).join("")
-      || `<div class="bar">set a range and a step</div>`;
-    $("#p-list").querySelectorAll(".pt").forEach(el => el.onclick = () => {
-      nextPoint = {label: el.dataset.label, done: false};
-      $("#p-list").querySelectorAll(".pt").forEach(o => o.classList.toggle("cur", o === el));
-      $("#p-bar").textContent = "next: " + nextPoint.label;
-    });
-    const done = points.filter(x => x.done).length;
-    $("#p-bar").textContent = `${done} of ${points.length} measured` +
-      (nextPoint ? `, next ${nextPoint.label}` : ", all done") +
-      (s.title ? `  |  ${s.title}` : "");
-  });
-}
-
-function loadAll(){
-  return Promise.all([api("/gauges"), api("/sessions")]).then(([g, s]) => {
-    gauges = g; sessions = s;
-    if(gSel && !gauges.some(x => x.id === gSel)) gSel = null;
-    if(sSel && !sessions.some(x => x.id === sSel)) sSel = null;
-    renderGauges(); renderSessions(); loadPoints();
-  }).catch(() => toast("database not reachable"));
-}
-
-function collect(prefix, fields){
-  const o = {};
-  fields.forEach(f => {
-    const el = $("#" + prefix + "-" + f);
-    if(!el) return;
-    const v = el.value.trim();
-    o[f] = el.type === "number" ? (v === "" ? null : parseFloat(v)) : v;
-  });
-  return o;
-}
-
-$("#g-new").onclick = () => { gSel = null; fillForm("g", GF, {unit:"MPa", dial_mm:20, sweep_deg:180,
-  range_min:0, range_max:40, needle_colour:"#FCB803"}); renderGauges(); };
-$("#g-save").onclick = () => {
-  const body = collect("g", GF);
-  (gSel ? api("/gauges/" + gSel, "PUT", body) : api("/gauges", "POST", body))
-    .then(g => { gSel = g.id; toast("gauge saved"); loadAll(); });
-};
-$("#s-new").onclick = () => {
-  if(!gSel) return toast("pick a gauge first");
-  const g = gauges.find(x => x.id === gSel) || {};
-  sSel = null;
-  fillForm("s", SF, {scale:"1:1", aperture:$("#ap").value, point_step:1,
-    point_min:g.range_min, point_max:g.range_max, sensor:""});
-  renderSessions();
-};
-$("#s-save").onclick = () => {
-  if(!gSel) return toast("pick a gauge first");
-  const body = Object.assign(collect("s", SF), {gauge_id: gSel});
-  (sSel ? api("/sessions/" + sSel, "PUT", body) : api("/sessions", "POST", body))
-    .then(s => { toast("campaign saved"); return loadAll().then(() => selectSession(s.id)); });
-};
-$("#p-measure").onclick = () => measurePoint();
-$("#point").onclick = () => measurePoint();
-$("#export").onclick = () => {
-  if(!sSel) return toast("pick a campaign first");
-  api("/sessions/" + sSel + "/export").then(data => {
-    const s = sessions.find(x => x.id === sSel) || {};
-    const name = ("halo_" + (s.title || "campaign")).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)],
-      {type: "application/json"}));
-    const a = document.createElement("a");
-    a.href = url; a.download = name + ".json"; a.click();
-    URL.revokeObjectURL(url);
-    toast("exported " + data.series.length + " series");
-  });
-};
-
-function measurePoint(){
-  if(!sSel) return toast("pick a campaign first");
-  if(!nextPoint) return toast("every position is measured");
-  fetch("/meta", {method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({label: nextPoint.label, aperture: $("#ap").value.trim() || "none"})})
-    .then(() => armed("m", nextPoint.label));
-}
-
-loadAll();
-
-/* ---------- boot splash ---------- */
-const BOOTLINES = [
-  ["BEAM", "470 nm armed"],
-  ["OPTICS", "differential mode"],
-  ["STORE", "sqlite attached"],
-  ["LINK", "probe handshake"],
-  ["HALO", "ready"]
-];
-(function boot(){
-  const el = $("#boot"), lines = $("#blines");
-  BOOTLINES.forEach(([k, v], i) => setTimeout(() => {
-    lines.innerHTML += `<div><b>${k}</b>  ${v}</div>`;
-  }, 180 + i * 290));
-  setTimeout(() => el.classList.add("gone"), 1950);
-  setTimeout(() => el.classList.add("off"), 2400);
-})();
-
-/* ---------- footer ping ----------
-   Eight patterns, drawn at random, never the same one twice running. The
-   footer is two rows of eight cells, so the geometry is worth playing with. */
-const CELLS = Array.from(document.querySelectorAll("footer > button, footer > .pair"));
-const HALF = Math.ceil(CELLS.length / 2);
-const ROW_A = CELLS.slice(0, HALF), ROW_B = CELLS.slice(HALF);
-
-function flash(el){
-  el.classList.remove("ping"); void el.offsetWidth; el.classList.add("ping");
-  setTimeout(() => el.classList.remove("ping"), 460);
-}
-const fire = (list, step, delay) =>
-  list.forEach((el, i) => setTimeout(() => flash(el), (delay || 0) + i * step));
-
-const PATTERNS = [
-  // both rows left to right
-  () => { fire(ROW_A, 55); fire(ROW_B, 55); },
-  // both rows right to left
-  () => { fire(ROW_A.slice().reverse(), 55); fire(ROW_B.slice().reverse(), 55); },
-  // counter running, top goes right, bottom goes left
-  () => { fire(ROW_A, 55); fire(ROW_B.slice().reverse(), 55); },
-  // the other way round
-  () => { fire(ROW_A.slice().reverse(), 55); fire(ROW_B, 55); },
-  // a snake: along the top, back along the bottom
-  () => { fire(ROW_A, 45); fire(ROW_B.slice().reverse(), 45, ROW_A.length * 45); },
-  // out from the middle to both edges
-  () => {
-    const mid = (row) => {
-      const c = Math.floor(row.length / 2);
-      row.forEach((el, i) => setTimeout(() => flash(el), Math.abs(i - c) * 70));
-    };
-    mid(ROW_A); mid(ROW_B);
-  },
-  // in from both edges to the middle
-  () => {
-    const edge = (row) => {
-      const c = Math.floor(row.length / 2);
-      row.forEach((el, i) => setTimeout(() => flash(el), (c - Math.abs(i - c)) * 70));
-    };
-    edge(ROW_A); edge(ROW_B);
-  },
-  // shuffled, like a self test
-  () => {
-    const all = CELLS.slice().sort(() => Math.random() - .5);
-    fire(all, 36);
-  },
-  // columns, top and bottom together
-  () => ROW_A.forEach((el, i) => setTimeout(() => {
-    flash(el); if(ROW_B[i]) flash(ROW_B[i]);
-  }, i * 62))
-];
-let pingLast = -1;
-function pingRun(){
-  let i;
-  do { i = Math.floor(Math.random() * PATTERNS.length); } while(i === pingLast);
-  pingLast = i;
-  PATTERNS[i]();
-}
-setInterval(pingRun, 7400);
-setTimeout(pingRun, 3000);
-
-/* ---------- glitch director ----------
-   Four effects built on real SVG filters, so the picture is displaced and the
-   colour channels are separated for real. One every five to eight seconds,
-   never the same twice running, each under half a second. */
-const fx = $("#fx");
-const rnd = (a, b) => a + Math.random() * (b - a);
-const SURF = [document.querySelector("header"), document.querySelector("main"),
-              document.querySelector("footer")];
-
-function surface(filter){ SURF.forEach(el => el.style.filter = filter || ""); }
-
-function ramp(ms, fn, done){
-  const t0 = performance.now();
-  (function step(now){
-    const t = Math.min(1, (now - t0) / ms);
-    fn(t);
-    if(t < 1) requestAnimationFrame(step); else done && done();
-  })(performance.now());
-}
-const bell = t => Math.sin(Math.PI * t);           // 0 up to 1 and back to 0
-
-function fxTear(){
-  const turb = $("#fx-turb"), map = $("#fx-map");
-  turb.setAttribute("baseFrequency", "0.000001 " + rnd(0.02, 0.06).toFixed(4));
-  surface("url(#fx-disp)");
-  ramp(340, t => {
-    map.setAttribute("scale", (bell(t) * rnd(26, 46)).toFixed(1));
-    if(Math.random() < 0.35) turb.setAttribute("seed", Math.floor(rnd(1, 99)));
-  }, () => { surface(""); map.setAttribute("scale", 0); });
-  return 0;
-}
-
-function fxChroma(){
-  const r = $("#fx-off-r"), c = $("#fx-off-c");
-  const dir = Math.random() < 0.5 ? 1 : -1;
-  surface("url(#fx-rgb)");
-  ramp(280, t => {
-    const d = bell(t) * rnd(4, 9) * dir;
-    r.setAttribute("dx", d.toFixed(1));
-    c.setAttribute("dx", (-d).toFixed(1));
-    r.setAttribute("dy", (bell(t) * rnd(-1.5, 1.5)).toFixed(1));
-  }, () => { surface(""); r.setAttribute("dx", 0); c.setAttribute("dx", 0); r.setAttribute("dy", 0); });
-  return 0;
-}
-
-function fxBoth(){
-  const turb = $("#fx-turb2"), map = $("#fx-map2"),
-        r = $("#fx-off-r2"), c = $("#fx-off-c2");
-  turb.setAttribute("baseFrequency", "0.000001 " + rnd(0.03, 0.08).toFixed(4));
-  surface("url(#fx-both)");
-  fx.innerHTML = `<div class="line" style="top:${rnd(15,80)}%"></div>`;
-  fx.classList.add("on");
-  ramp(420, t => {
-    map.setAttribute("scale", (bell(t) * rnd(30, 60)).toFixed(1));
-    const d = bell(t) * rnd(5, 11);
-    r.setAttribute("dx", d.toFixed(1));
-    c.setAttribute("dx", (-d).toFixed(1));
-    if(Math.random() < 0.5) turb.setAttribute("seed", Math.floor(rnd(1, 99)));
-  }, () => { surface(""); map.setAttribute("scale", 0);
-             r.setAttribute("dx", 0); c.setAttribute("dx", 0);
-             fx.classList.remove("on"); fx.innerHTML = ""; });
-  return 0;
-}
-
-function fxDropout(){
-  // the signal drops for two frames, comes back grey, then settles
-  document.body.classList.add("fx-drop");
-  fx.innerHTML = `<div class="dark"></div><div class="scan" style="top:${rnd(-10,70)}%"></div>`;
-  fx.classList.add("on");
-  setTimeout(() => { fx.querySelector(".dark").style.opacity = ".15"; }, 70);
-  setTimeout(() => {
-    document.body.classList.remove("fx-drop");
-    fx.classList.remove("on"); fx.innerHTML = "";
-  }, 260);
-  return 0;
-}
-
-const FX = [fxTear, fxChroma, fxBoth, fxDropout];
-let fxLast = -1;
-function fxOnce(){
-  if(counting) return schedule();
-  let i;
-  do { i = Math.floor(Math.random() * FX.length); } while(i === fxLast);
-  fxLast = i;
-  FX[i]();
-  schedule();
-}
-function schedule(){ setTimeout(fxOnce, rnd(5000, 8000)); }
-if(!matchMedia("(prefers-reduced-motion: reduce)").matches) schedule();
 
 setInterval(() => { if(!gotHello) send("p"); }, 3000);
 function alignBrand(){
