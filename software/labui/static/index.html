@@ -110,8 +110,43 @@ tr.off td{color:var(--dim)}
 #verdict .big.go{color:var(--beam);text-shadow:0 0 1.2rem rgba(0,159,227,.55)}
 #verdict p{font-size:.9rem;color:var(--dim)}
 
+/* --- setup --- */
+#pg-setup{gap:.5rem}
+.cols{display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:.7rem;flex:1 1 auto;min-height:0}
+.col{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);
+  background:var(--panel)}
+.col h3{font-size:.78rem;font-weight:400;letter-spacing:.1em;color:var(--dim);
+  padding:.45rem .6rem;border-bottom:1px solid var(--line);display:flex;align-items:center}
+.col h3 button{margin-left:auto;padding:.2rem .5rem;font-size:.72rem}
+.list{overflow:auto;min-height:0;flex:1 1 auto}
+.item{padding:.45rem .6rem;border-bottom:1px solid var(--line);cursor:pointer;
+  display:flex;align-items:baseline;gap:.5rem}
+.item:hover{background:#161C22}
+.item.sel{background:#111A20;border-left:3px solid var(--beam);padding-left:calc(.6rem - 3px)}
+.item .t{font-size:.95rem}
+.item .s{margin-left:auto;font-size:.72rem;color:var(--dim)}
+.item .x{color:var(--dim);font-size:.8rem;padding:0 .2rem}
+.item .x:hover{color:var(--alarm)}
+.form{padding:.5rem .6rem;border-top:1px solid var(--line);display:grid;
+  grid-template-columns:1fr 1fr;gap:.35rem}
+.form label{display:flex;flex-direction:column;gap:.15rem;font-size:.68rem}
+.form input,.form select{font-family:var(--mono);font-size:.9rem;color:var(--ink);
+  background:#0B0F12;border:1px solid var(--line);padding:.4rem;width:100%;min-width:0}
+.form input:focus,.form select:focus{outline:none;border-color:var(--beam)}
+.form .wide{grid-column:span 2}
+.pts{display:grid;grid-template-columns:repeat(auto-fill,minmax(5.6rem,1fr));gap:.3rem;
+  padding:.5rem;overflow:auto;min-height:0;flex:1 1 auto;align-content:start}
+.pt{border:1px solid var(--line);background:#0B0F12;padding:.4rem .3rem;text-align:center;
+  font-size:.85rem;cursor:pointer;white-space:nowrap;overflow:hidden}
+.pt:hover{border-color:var(--beam)}
+.pt.done{color:var(--dim);border-color:var(--beam-dim)}
+.pt.done::after{content:" ok";color:var(--beam);font-size:.7rem}
+.pt.cur{border-color:var(--beam);color:var(--beam);box-shadow:0 0 0 1px var(--beam) inset}
+.bar{display:flex;align-items:center;gap:.6rem;padding:.4rem .6rem;border-top:1px solid var(--line);
+  font-size:.8rem;color:var(--dim)}
+
 /* ================= footer ================= */
-footer{display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;
+footer{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;
   gap:.4rem;padding:.5rem .8rem;border-top:1px solid var(--line)}
 button{font-family:var(--mono);font-size:clamp(.72rem,.95vw,1rem);color:var(--ink);
   background:var(--panel);border:1px solid var(--line);padding:.62rem .4rem;cursor:pointer;
@@ -193,6 +228,49 @@ button.go{border-color:var(--beam-dim)}
     <div class="scroll" id="series-table" style="flex:none;max-height:46%"></div>
   </div>
 
+  <div class="page" id="pg-setup">
+    <div class="cols">
+      <div class="col">
+        <h3>Gauges<button id="g-new">new</button></h3>
+        <div class="list" id="g-list"></div>
+        <div class="form" id="g-form">
+          <label>manufacturer<input id="g-manufacturer"></label>
+          <label>model<input id="g-model"></label>
+          <label>dial mm<input id="g-dial_mm" type="number" step="0.1"></label>
+          <label>unit<input id="g-unit"></label>
+          <label>range min<input id="g-range_min" type="number" step="0.1"></label>
+          <label>range max<input id="g-range_max" type="number" step="0.1"></label>
+          <label>sweep deg<input id="g-sweep_deg" type="number" step="1"></label>
+          <label>needle colour<input id="g-needle_colour"></label>
+          <label class="wide">notes<input id="g-notes"></label>
+          <button class="wide" id="g-save">save gauge</button>
+        </div>
+      </div>
+
+      <div class="col">
+        <h3>Campaigns<button id="s-new">new</button></h3>
+        <div class="list" id="s-list"></div>
+        <div class="form" id="s-form">
+          <label class="wide">title<input id="s-title"></label>
+          <label>sensor<input id="s-sensor" placeholder="ALS-PT19"></label>
+          <label>aperture<input id="s-aperture" placeholder="1.0mm"></label>
+          <label>scale<input id="s-scale" placeholder="1:1"></label>
+          <label>step<input id="s-point_step" type="number" step="0.1"></label>
+          <label>from<input id="s-point_min" type="number" step="0.1"></label>
+          <label>to<input id="s-point_max" type="number" step="0.1"></label>
+          <label class="wide">notes<input id="s-notes"></label>
+          <button class="wide" id="s-save">save campaign</button>
+        </div>
+      </div>
+
+      <div class="col">
+        <h3>Needle positions<button id="p-measure">measure next</button></h3>
+        <div class="pts" id="p-list"></div>
+        <div class="bar" id="p-bar">no campaign selected</div>
+      </div>
+    </div>
+  </div>
+
   <div class="page" id="pg-result">
     <div class="scroll" id="result" style="flex:1 1 auto;display:flex;flex-direction:column"></div>
     <div id="verdict"><span class="big">no result</span><p>Go needs SNR 10 or better.</p></div>
@@ -209,6 +287,7 @@ button.go{border-color:var(--beam-dim)}
   <button class="tab on" data-view="live"><kbd>1</kbd>Live</button>
   <button class="tab" data-view="series"><kbd>2</kbd>Series</button>
   <button class="tab" data-view="result"><kbd>3</kbd>Result</button>
+  <button class="tab" data-view="setup"><kbd>4</kbd>Setup</button>
   <button id="shot"><kbd>s</kbd>Screenshot<em>Y</em></button>
   <button id="fs"><kbd>f</kbd>Full screen</button>
   <div class="pair">
@@ -245,7 +324,7 @@ $("#smaller").addEventListener("click", () => setUi(ui - 2));
 /* ---------- views ---------- */
 let manualUntil = 0;
 function show(name, manual){
-  ["live","series","result"].forEach(v => $("#pg-"+v).classList.toggle("on", v === name));
+  ["live","series","result","setup"].forEach(v => $("#pg-"+v).classList.toggle("on", v === name));
   document.querySelectorAll("button.tab").forEach(b => b.classList.toggle("on", b.dataset.view === name));
   $("#v-name").textContent = name;
   if(manual) manualUntil = Date.now() + 30000;
@@ -443,7 +522,8 @@ function series(o){
     `<table><tr><th>ch</th><th>on</th><th>sd</th><th>off</th><th>signal</th><th>noise</th><th></th></tr>${rows}</table>` +
     (o.saturated ? `<p class="note" style="color:var(--needle)">Saturated, lower the gain.</p>` : "") +
     (o.file ? `<p class="note">Saved ${o.file}</p>` : "");
-  toast(o.target + " card measured");
+  toast((o.label || o.target) + " measured");
+  if(o.target === "point") loadPoints();
 }
 function report(o){
   if(o.empty){ $("#result").innerHTML = steps(); auto("result"); return; }
@@ -496,12 +576,13 @@ function send(key){
     .catch(()=>toast("server not reachable"));
 }
 let counting = false;
-function armed(key){
+function armed(key, label){
   // the show, and the moment to take your hand off the rig
   if(counting) return;
   counting = true;
   const cd = $("#cd"), n = $("#cd-n"), l = $("#cd-l");
-  l.textContent = key === "y" ? "yellow card, hold still" : "white card, hold still";
+  l.textContent = label ? (label + ", hold still")
+        : (key === "y" ? "yellow card, hold still" : "white card, hold still");
   cd.classList.add("on");
   send("k");                       // the board counts down on its own display
   let i = 3;
@@ -555,6 +636,7 @@ addEventListener("keydown", e => {
   else if(k === "1"){ show("live", true); }
   else if(k === "2"){ show("series", true); }
   else if(k === "3"){ show("result", true); }
+  else if(k === "4"){ show("setup", true); }
   else if(k === "+" || k === "="){ setUi(ui + 2); }
   else if(k === "-"){ setUi(ui - 2); }
 });
@@ -566,7 +648,7 @@ addEventListener("keydown", e => {
 const PAD = { 0:"w", 1:"y", 2:"r", 3:"s" };      // A, B, X, Y
 const PAD_NAME = { 0:"A white", 1:"B yellow", 2:"X report", 3:"Y screenshot" };
 const DPAD = { 12:"size+", 13:"size-", 14:"view-", 15:"view+" };
-const VIEWS = ["live","series","result"];
+const VIEWS = ["live","series","result","setup"];
 let padPrev = [], padSeen = false;
 
 function padTick(){
@@ -583,7 +665,7 @@ function padTick(){
         else if(DPAD[i] === "size-") setUi(ui - 2);
         else if(DPAD[i]){
           const cur = VIEWS.indexOf($("#v-name").textContent);
-          const next = (cur + (DPAD[i] === "view+" ? 1 : 2)) % 3;
+          const next = (cur + (DPAD[i] === "view+" ? 1 : VIEWS.length - 1)) % VIEWS.length;
           show(VIEWS[next], true);
         }
         else toast("button " + i + " is not mapped yet");
@@ -596,7 +678,7 @@ function padTick(){
       if(ax !== padPrev.ax){
         if(ax === 1 || ax === -1){
           const cur = VIEWS.indexOf($("#v-name").textContent);
-          show(VIEWS[(cur + (ax > 0 ? 1 : 2)) % 3], true);
+          show(VIEWS[(cur + (ax > 0 ? 1 : VIEWS.length - 1)) % VIEWS.length], true);
         }
         padPrev.ax = ax;
       }
@@ -611,6 +693,141 @@ function padTick(){
 }
 addEventListener("gamepadconnected", e => toast("game pad: " + e.gamepad.id.slice(0,30)));
 requestAnimationFrame(padTick);
+
+/* ---------- setup: gauges, campaigns, needle positions ---------- */
+const GF = ["manufacturer","model","dial_mm","unit","range_min","range_max",
+            "sweep_deg","needle_colour","notes"];
+const SF = ["title","sensor","aperture","scale","point_step","point_min","point_max","notes"];
+let gauges = [], sessions = [], points = [], gSel = null, sSel = null, nextPoint = null;
+
+const api = (path, method, body) =>
+  fetch("/api" + path, {method: method || "GET",
+    headers: {"Content-Type": "application/json"},
+    body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
+
+function fillForm(prefix, fields, obj){
+  fields.forEach(f => { const el = $("#" + prefix + "-" + f); if(el) el.value = (obj && obj[f] != null) ? obj[f] : ""; });
+}
+
+function renderGauges(){
+  $("#g-list").innerHTML = gauges.map(g =>
+    `<div class="item ${gSel === g.id ? "sel" : ""}" data-id="${g.id}">
+       <span class="t">${g.manufacturer} ${g.model}</span>
+       <span class="s">${g.dial_mm} mm, ${g.range_min} to ${g.range_max} ${g.unit}</span>
+       <span class="x" data-del="${g.id}">del</span></div>`).join("")
+    || `<div class="bar">no gauge yet</div>`;
+  $("#g-list").querySelectorAll(".item").forEach(el => el.onclick = ev => {
+    if(ev.target.dataset.del){
+      if(!confirm("delete this gauge?")) return;
+      return api("/gauges/" + ev.target.dataset.del, "DELETE").then(loadAll);
+    }
+    gSel = +el.dataset.id;
+    fillForm("g", GF, gauges.find(g => g.id === gSel));
+    renderGauges();
+  });
+}
+
+function renderSessions(){
+  const mine = gSel ? sessions.filter(s => s.gauge_id === gSel) : sessions;
+  $("#s-list").innerHTML = mine.map(s =>
+    `<div class="item ${sSel === s.id ? "sel" : ""}" data-id="${s.id}">
+       <span class="t">${s.title || "untitled"}</span>
+       <span class="s">${s.n_series} series, step ${s.point_step}</span>
+       <span class="x" data-del="${s.id}">del</span></div>`).join("")
+    || `<div class="bar">no campaign yet</div>`;
+  $("#s-list").querySelectorAll(".item").forEach(el => el.onclick = ev => {
+    if(ev.target.dataset.del){
+      if(!confirm("delete this campaign and all its measurements?")) return;
+      return api("/sessions/" + ev.target.dataset.del, "DELETE").then(loadAll);
+    }
+    selectSession(+el.dataset.id);
+  });
+}
+
+function selectSession(id){
+  sSel = id;
+  const s = sessions.find(x => x.id === id);
+  fillForm("s", SF, s);
+  if(s && s.aperture) $("#ap").value = s.aperture;
+  api("/active", "POST", {session_id: id}).then(() => pushMeta());
+  renderSessions();
+  loadPoints();
+}
+
+function loadPoints(){
+  if(!sSel){ $("#p-list").innerHTML = ""; $("#p-bar").textContent = "no campaign selected"; return; }
+  api("/sessions/" + sSel + "/points").then(p => {
+    points = p;
+    const s = sessions.find(x => x.id === sSel) || {};
+    nextPoint = points.find(x => !x.done) || null;
+    $("#p-list").innerHTML = points.map(x =>
+      `<div class="pt ${x.done ? "done" : ""} ${nextPoint && x.label === nextPoint.label ? "cur" : ""}"
+            data-label="${x.label}">${x.label}</div>`).join("")
+      || `<div class="bar">set a range and a step</div>`;
+    $("#p-list").querySelectorAll(".pt").forEach(el => el.onclick = () => {
+      nextPoint = {label: el.dataset.label, done: false};
+      $("#p-list").querySelectorAll(".pt").forEach(o => o.classList.toggle("cur", o === el));
+      $("#p-bar").textContent = "next: " + nextPoint.label;
+    });
+    const done = points.filter(x => x.done).length;
+    $("#p-bar").textContent = `${done} of ${points.length} measured` +
+      (nextPoint ? `, next ${nextPoint.label}` : ", all done") +
+      (s.title ? `  |  ${s.title}` : "");
+  });
+}
+
+function loadAll(){
+  return Promise.all([api("/gauges"), api("/sessions")]).then(([g, s]) => {
+    gauges = g; sessions = s;
+    if(gSel && !gauges.some(x => x.id === gSel)) gSel = null;
+    if(sSel && !sessions.some(x => x.id === sSel)) sSel = null;
+    renderGauges(); renderSessions(); loadPoints();
+  }).catch(() => toast("database not reachable"));
+}
+
+function collect(prefix, fields){
+  const o = {};
+  fields.forEach(f => {
+    const el = $("#" + prefix + "-" + f);
+    if(!el) return;
+    const v = el.value.trim();
+    o[f] = el.type === "number" ? (v === "" ? null : parseFloat(v)) : v;
+  });
+  return o;
+}
+
+$("#g-new").onclick = () => { gSel = null; fillForm("g", GF, {unit:"MPa", dial_mm:20, sweep_deg:180,
+  range_min:0, range_max:40, needle_colour:"#FCB803"}); renderGauges(); };
+$("#g-save").onclick = () => {
+  const body = collect("g", GF);
+  (gSel ? api("/gauges/" + gSel, "PUT", body) : api("/gauges", "POST", body))
+    .then(g => { gSel = g.id; toast("gauge saved"); loadAll(); });
+};
+$("#s-new").onclick = () => {
+  if(!gSel) return toast("pick a gauge first");
+  const g = gauges.find(x => x.id === gSel) || {};
+  sSel = null;
+  fillForm("s", SF, {scale:"1:1", aperture:$("#ap").value, point_step:1,
+    point_min:g.range_min, point_max:g.range_max, sensor:""});
+  renderSessions();
+};
+$("#s-save").onclick = () => {
+  if(!gSel) return toast("pick a gauge first");
+  const body = Object.assign(collect("s", SF), {gauge_id: gSel});
+  (sSel ? api("/sessions/" + sSel, "PUT", body) : api("/sessions", "POST", body))
+    .then(s => { toast("campaign saved"); return loadAll().then(() => selectSession(s.id)); });
+};
+$("#p-measure").onclick = () => measurePoint();
+
+function measurePoint(){
+  if(!sSel) return toast("pick a campaign first");
+  if(!nextPoint) return toast("every position is measured");
+  fetch("/meta", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({label: nextPoint.label, aperture: $("#ap").value.trim() || "none"})})
+    .then(() => armed("m", nextPoint.label));
+}
+
+loadAll();
 
 setInterval(() => { if(!gotHello) send("p"); }, 3000);
 function alignBrand(){

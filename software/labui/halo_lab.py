@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import queue
+import math
 import random
 import shutil
 import subprocess
@@ -26,6 +27,8 @@ import threading
 import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from db import Store
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(HERE, "static")
@@ -76,7 +79,9 @@ class Hub:
 class Recorder:
     """Writes the raw session log and one txt plus one json file per result."""
 
-    def __init__(self, data_dir, image_dir):
+    def __init__(self, data_dir, image_dir, store=None):
+        self.store = store
+        self.session_id = None
         self.data_dir = data_dir
         self.image_dir = image_dir
         os.makedirs(self.data_dir, exist_ok=True)
@@ -141,6 +146,11 @@ class Recorder:
         if obj.get("saturated"):
             body.append("      WARNING: clear channel saturated, lower the gain and repeat")
         self._write(stem, body, obj)
+        if self.store and self.session_id:
+            try:
+                self.store.add_series(self.session_id, dict(obj, aperture=self.meta.get("aperture")), stem)
+            except Exception as exc:
+                print("[db] series not stored: %s" % exc, flush=True)
         return stem
 
     def report(self, obj):
@@ -422,9 +432,17 @@ class FakeLink(threading.Thread):
 
     def _run(self, target):
         white = target == "white"
-        peak = {"C": 1067.7 if white else 224.1, "R": 12.0 if white else 3.3,
-                "G": 275.8 if white else 62.8, "B": 827.9 if white else 168.4,
-                "PT-A": 2286.3 if white else 451.0, "PT-B": 142.0}
+        if target == "point":
+            # a needle sweeping past the sensor: full dial, dipping where it sits
+            self.point_n = getattr(self, "point_n", -1) + 1
+            dip = math.exp(-((self.point_n - 2.0) ** 2) / 1.2)
+            k = 1.0 - 0.78 * dip
+            peak = {"C": 1067.7 * k, "R": 12.0 * k, "G": 275.8 * k, "B": 827.9 * k,
+                    "PT-A": 2286.3 * k, "PT-B": 142.0}
+        else:
+            peak = {"C": 1067.7 if white else 224.1, "R": 12.0 if white else 3.3,
+                    "G": 275.8 if white else 62.8, "B": 827.9 if white else 168.4,
+                    "PT-A": 2286.3 if white else 451.0, "PT-B": 142.0}
         self.hub.publish({"type": "run", "target": target, "light": self.light,
                           "gain": self.gain, "samples": 50})
         on, off = {}, {}
@@ -490,9 +508,11 @@ class FakeLink(threading.Thread):
                 self._run("white")
             elif key == "y":
                 self._run("yellow")
+            elif key == "m":
+                self._run("point")
             elif key == "r":
                 self._report()
-            elif key in ("i", "g", "l", "c", "j", "p"):
+            elif key in ("i", "g", "l", "c", "j", "p", "k", "n"):
                 if key == "i":
                     self.light = "white" if self.light == "blue" else "blue"
                 if key == "g":
@@ -544,6 +564,8 @@ def make_handler(hub, link, recorder):
                 self._file("cyb3rgun_logo.svg", "image/svg+xml")
             elif self.path == "/events":
                 self._events()
+            elif self.path.startswith("/api/"):
+                self._api("GET", self.path, {})
             else:
                 self._send(404, "not found")
 
@@ -596,6 +618,8 @@ def make_handler(hub, link, recorder):
                     if field in body:
                         recorder.meta[field] = str(body[field])[:120]
                 self._send(200, json.dumps({"ok": True, "meta": recorder.meta}), "application/json")
+            elif self.path.startswith("/api/"):
+                self._api("POST", self.path, body)
             elif self.path == "/shot":
                 path, err = recorder.screenshot()
                 self._send(200, json.dumps({"ok": path is not None,
@@ -603,6 +627,61 @@ def make_handler(hub, link, recorder):
                                             "error": err}), "application/json")
             else:
                 self._send(404, "not found")
+
+        def do_PUT(self):
+            length = int(self.headers.get("Content-Length") or 0)
+            try:
+                body = json.loads((self.rfile.read(length) or b"{}").decode("utf-8") or "{}")
+            except ValueError:
+                body = {}
+            self._api("PUT", self.path, body)
+
+        def do_DELETE(self):
+            self._api("DELETE", self.path, {})
+
+        def _json(self, obj, code=200):
+            self._send(code, json.dumps(obj, default=str), "application/json")
+
+        def _api(self, method, path, body):
+            store = recorder.store
+            if store is None:
+                return self._json({"error": "no database"}, 503)
+            parts = [p for p in path.split("?")[0].strip("/").split("/") if p][1:]
+            head = parts[0] if parts else ""
+            rid = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+            tail = parts[2] if len(parts) > 2 else ""
+            try:
+                if head == "gauges":
+                    if method == "GET":    return self._json(store.gauges())
+                    if method == "POST":   return self._json(store.add_gauge(body), 201)
+                    if method == "PUT":    return self._json(store.update_gauge(rid, body))
+                    if method == "DELETE": return self._json({"deleted": store.delete_gauge(rid)})
+                if head == "sessions":
+                    if method == "GET":
+                        if rid and tail == "points":  return self._json(store.points(rid))
+                        if rid and tail == "series":  return self._json(store.series_of(rid))
+                        if rid and tail == "reports": return self._json(store.reports_of(rid))
+                        if rid and tail == "export":  return self._json(store.export(rid))
+                        if rid:                       return self._json(store.session(rid))
+                        return self._json(store.sessions())
+                    if method == "POST":   return self._json(store.add_session(body), 201)
+                    if method == "PUT":    return self._json(store.update_session(rid, body))
+                    if method == "DELETE": return self._json({"deleted": store.delete_session(rid)})
+                if head == "series" and method == "DELETE":
+                    return self._json({"deleted": store.delete_series(rid)})
+                if head == "active":
+                    if method == "POST":
+                        recorder.session_id = body.get("session_id")
+                        if recorder.session_id:
+                            s = store.session(recorder.session_id)
+                            if s and s.get("aperture"):
+                                recorder.meta["aperture"] = s["aperture"]
+                        hub.publish({"type": "session", "id": recorder.session_id})
+                    return self._json({"session_id": recorder.session_id,
+                                       "aperture": recorder.meta.get("aperture")})
+            except Exception as exc:
+                return self._json({"error": str(exc)}, 400)
+            self._json({"error": "unknown endpoint"}, 404)
 
     return Handler
 
@@ -652,6 +731,8 @@ def main():
     ap.add_argument("--http-port", type=int, default=8760)
     ap.add_argument("--data-dir", default=os.path.join(REPO, "docs", "log", "data"))
     ap.add_argument("--image-dir", default=os.path.join(REPO, "docs", "log", "images"))
+    ap.add_argument("--db", default=os.path.join(REPO, "docs", "log", "halo.db"),
+                    help="SQLite file with gauges, sessions and results")
     ap.add_argument("--list", action="store_true", help="list serial ports and exit")
     ap.add_argument("--tcp", default=None, metavar="HOST[:PORT]",
                     help="talk to the board over WiFi instead of USB, e.g. 192.168.1.50")
@@ -662,7 +743,12 @@ def main():
         sys.exit(list_ports())
 
     hub = Hub()
-    recorder = Recorder(args.data_dir, args.image_dir)
+    try:
+        store = Store(args.db)
+    except Exception as exc:
+        print("[db] not available: %s" % exc, flush=True)
+        store = None
+    recorder = Recorder(args.data_dir, args.image_dir, store)
 
     if args.simulate:
         link = FakeLink(hub, recorder)
@@ -684,6 +770,7 @@ def main():
     print("HALO LAB")
     print("  board  : %s" % ("simulated" if args.simulate else link.port_name))
     print("  data   : %s" % args.data_dir)
+    print("  db     : %s" % (args.db if store else "off"))
     print("  open   : http://%s:%d" % (shown, args.http_port))
     print("  stop   : Ctrl+C")
     try:
