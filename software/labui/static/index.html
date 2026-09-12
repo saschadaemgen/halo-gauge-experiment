@@ -27,66 +27,89 @@ body{width:100%;height:100vh;overflow:hidden;background:var(--bg);color:var(--in
 header{display:flex;align-items:center;gap:1rem;padding:.6rem .8rem;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:.8rem;flex:none}
 #logo{width:4.3rem;height:4.3rem;display:block;overflow:visible;flex:none}
+#logo *{transform-box:view-box;transform-origin:522px 521px}
 #lg-fill{fill:var(--beam-dim);transition:fill .4s}
-#lg-ring{fill:none;stroke:var(--beam-dim);stroke-width:40.3;stroke-miterlimit:10;
-  transform-box:fill-box;transform-origin:50% 50%;transition:stroke .4s}
-#lg-core{fill:var(--beam-dim);transform-box:fill-box;transform-origin:50% 50%;
-  transition:fill .4s;opacity:.25}
+#lg-ring{fill:none;stroke:var(--beam-dim);stroke-width:40.3;stroke-miterlimit:10;transition:stroke .4s}
+#lg-core{fill:var(--beam-dim);transition:fill .4s;opacity:.3}
 #lg-trace{display:none}
 
-body.up #lg-fill{fill:var(--beam)}
-body.up #lg-ring{stroke:var(--dial);animation:seek 7s cubic-bezier(.34,1.56,.64,1) infinite}
+/* idle: the blue sweep swings right, springs back, swings left, settles.
+   the ring stays put because a circle turning looks like nothing at all. */
+body.up #lg-fill{fill:var(--beam);animation:swing 6.5s ease-in-out infinite}
+body.up #lg-ring{stroke:var(--dial)}
 body.up #lg-core{fill:var(--beam);animation:core 3.4s ease-in-out infinite}
-body.busy #lg-ring{animation:spin 1.15s linear infinite}
-body.busy #lg-core{animation:core .75s ease-in-out infinite}
+
+/* measuring: the sweep spins right round and the core strobes,
+   so the state is unmistakable across the room */
+body.busy #lg-fill{animation:orbit 1.6s cubic-bezier(.7,0,.3,1) infinite}
+body.busy #lg-ring{stroke:var(--beam);animation:ringpulse .8s ease-in-out infinite}
+body.busy #lg-core{fill:var(--dial);animation:core .55s ease-in-out infinite}
 body.lit #lg-fill{fill:var(--dial)}
-body.lit #lg-ring{stroke:var(--beam)}
 body.lit #lg-core{fill:var(--dial)}
 
-/* look right, settle, look left, settle. the overshoot in the timing function
-   gives it the swing, the long holds keep it from being busy */
-@keyframes seek{
-   0%   {transform:rotate(0deg)}
-  10%   {transform:rotate(26deg)}
-  26%   {transform:rotate(22deg)}
-  40%   {transform:rotate(22deg)}
-  50%   {transform:rotate(-24deg)}
-  66%   {transform:rotate(-20deg)}
-  80%   {transform:rotate(-20deg)}
-  92%   {transform:rotate(2deg)}
- 100%   {transform:rotate(0deg)}
+@keyframes swing{
+   0%  {transform:rotate(0deg)}
+   8%  {transform:rotate(19deg)}
+  14%  {transform:rotate(12deg)}
+  19%  {transform:rotate(15deg)}
+  24%  {transform:rotate(14deg)}
+  40%  {transform:rotate(14deg)}
+  50%  {transform:rotate(-17deg)}
+  56%  {transform:rotate(-10deg)}
+  61%  {transform:rotate(-13deg)}
+  66%  {transform:rotate(-12deg)}
+  82%  {transform:rotate(-12deg)}
+  92%  {transform:rotate(3deg)}
+  96%  {transform:rotate(-1deg)}
+ 100%  {transform:rotate(0deg)}
 }
+@keyframes orbit{
+   0%  {transform:rotate(0deg)}
+  70%  {transform:rotate(340deg)}
+  85%  {transform:rotate(368deg)}
+ 100%  {transform:rotate(360deg)}
+}
+@keyframes ringpulse{0%,100%{stroke-width:40.3;opacity:.6}50%{stroke-width:72;opacity:1}}
 @keyframes core{
-   0%,100%{transform:scale(.72);opacity:.35}
-  50%    {transform:scale(1.06);opacity:1}
+   0%,100%{transform:scale(.7);opacity:.35}
+  50%    {transform:scale(1.08);opacity:1}
 }
-@keyframes spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){#lg-ring,#lg-core{animation:none!important}}
+@media (prefers-reduced-motion:reduce){#lg-fill,#lg-ring,#lg-core{animation:none!important}}
 .names{display:flex;flex-direction:column;gap:.15rem;align-items:flex-start}
 .mark{font-size:1.5rem;letter-spacing:.02em;color:var(--dial);white-space:nowrap;
   position:relative;display:inline-block}
-.mark::before,.mark::after{content:attr(data-text);position:absolute;inset:0;
-  letter-spacing:inherit;pointer-events:none;opacity:0;white-space:nowrap}
+.mark::before,.mark::after{content:attr(data-text);position:absolute;left:0;top:0;
+  letter-spacing:inherit;font:inherit;pointer-events:none;opacity:0;white-space:nowrap;
+  background:var(--bg)}
 .mark::before{color:var(--beam)}
 .mark::after{color:var(--needle)}
-body.up .mark::before{animation:glitchA 11s steps(1,end) infinite}
-body.up .mark::after{animation:glitchB 11s steps(1,end) infinite}
-/* three short bursts in eleven seconds, invisible the rest of the time */
+body.up .mark{animation:shake 8s steps(1,end) infinite}
+body.up .mark::before{animation:glitchA 8s steps(1,end) infinite}
+body.up .mark::after{animation:glitchB 8s steps(1,end) infinite}
+/* one visible burst of about a third of a second every eight seconds */
+@keyframes shake{
+  0%,90%{transform:none}
+  91%{transform:translate(1px,0)}
+  93%{transform:translate(-2px,0)}
+  95%{transform:translate(1px,0)}
+  96%,100%{transform:none}
+}
 @keyframes glitchA{
-  0%,86%{opacity:0;transform:none;clip-path:none}
-  87%{opacity:.85;transform:translate(-2px,-1px);clip-path:inset(12% 0 62% 0)}
-  88%{opacity:.85;transform:translate(3px,1px);clip-path:inset(58% 0 18% 0)}
-  89%{opacity:.85;transform:translate(-1px,0);clip-path:inset(30% 0 44% 0)}
-  90%,100%{opacity:0;transform:none;clip-path:none}
+  0%,90%{opacity:0}
+  91%{opacity:1;transform:translate(-4px,-2px);clip-path:inset(6% 0 66% 0)}
+  92.5%{opacity:1;transform:translate(5px,2px);clip-path:inset(52% 0 20% 0)}
+  94%{opacity:1;transform:translate(-3px,1px);clip-path:inset(28% 0 46% 0)}
+  95.5%{opacity:1;transform:translate(2px,-1px);clip-path:inset(70% 0 8% 0)}
+  96.5%,100%{opacity:0}
 }
 @keyframes glitchB{
-  0%,86.5%{opacity:0;transform:none;clip-path:none}
-  87.5%{opacity:.7;transform:translate(2px,1px);clip-path:inset(40% 0 34% 0)}
-  88.5%{opacity:.7;transform:translate(-3px,-1px);clip-path:inset(8% 0 70% 0)}
-  89.5%{opacity:0;transform:none;clip-path:none}
-  100%{opacity:0}
+  0%,90.5%{opacity:0}
+  91.5%{opacity:.9;transform:translate(4px,2px);clip-path:inset(38% 0 36% 0)}
+  93.5%{opacity:.9;transform:translate(-5px,-2px);clip-path:inset(4% 0 74% 0)}
+  95%{opacity:.9;transform:translate(3px,1px);clip-path:inset(62% 0 14% 0)}
+  96%,100%{opacity:0}
 }
-@media (prefers-reduced-motion:reduce){.mark::before,.mark::after{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.mark,.mark::before,.mark::after{animation:none!important}}
 .sub{font-size:.86rem;color:var(--dim);white-space:nowrap}
 .sub i{font-style:normal;color:var(--beam)}
 .st{margin-left:auto;display:flex;align-items:center;gap:.4rem;justify-content:flex-end;min-width:0}
@@ -204,27 +227,24 @@ footer{display:grid;grid-template-columns:repeat(8,1fr);grid-auto-rows:1fr;
   gap:.4rem;padding:.5rem .8rem;border-top:1px solid var(--line)}
 button{font-family:var(--mono);font-size:clamp(.72rem,.95vw,1rem);color:var(--dim);
   background:var(--panel);border:1px solid var(--line);padding:.62rem .4rem;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:.45rem;min-width:0;
+  display:flex;align-items:center;justify-content:center;gap:.35rem;min-width:0;
   white-space:nowrap;overflow:hidden;position:relative;transition:color .12s,
   background .12s,border-color .12s}
-button::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent}
 button:hover{color:var(--ink);border-color:#33414C;background:#161C22}
 button:active{transform:translateY(1px)}
 button:focus-visible{outline:2px solid var(--beam);outline-offset:1px}
 button kbd{font:inherit;color:var(--beam);flex:none;opacity:.85}
-button em{font-style:normal;font-size:.72em;color:var(--dim);border:1px solid var(--line);
-  padding:0 .35em;flex:none;margin-left:.1rem}
+button em{font-style:normal;font-size:.68em;color:var(--dim);border:1px solid var(--line);
+  padding:0 .3em;flex:none}
+button.tab.on em{color:var(--bg);border-color:rgba(7,9,11,.4)}
 
 /* the three that trigger a measurement carry the beam colour */
 button.go{color:var(--ink);border-color:var(--beam-dim)}
-button.go::before{background:var(--beam-dim)}
 button.go:hover{border-color:var(--beam);background:#10222B}
-button.go:hover::before{background:var(--beam)}
 
 /* the active view is filled, not just outlined, so it reads at a glance */
 button.tab.on{color:var(--bg);background:var(--beam);border-color:var(--beam)}
 button.tab.on kbd{color:var(--bg);opacity:.7}
-button.tab.on::before{background:var(--dial)}
 button.tab.on:hover{background:#00B4FF;color:var(--bg)}
 
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;min-width:0}
@@ -347,9 +367,9 @@ button.tab.on:hover{background:#00B4FF;color:var(--bg)}
 </main>
 
 <footer>
-  <button data-key="w" class="go"><kbd>w</kbd>White card<em>A</em></button>
-  <button data-key="y" class="go"><kbd>y</kbd>Yellow card<em>B</em></button>
-  <button id="point" class="go"><kbd>m</kbd>Point<em>L</em></button>
+  <button data-key="w" class="go"><kbd>w</kbd>White<em>A</em></button>
+  <button data-key="y" class="go"><kbd>y</kbd>Yellow<em>B</em></button>
+  <button id="point" class="go"><kbd>m</kbd>Point</button>
   <button data-key="r" class="go"><kbd>r</kbd>Report<em>X</em></button>
   <button data-key="i"><kbd>i</kbd>Light</button>
   <button data-key="g"><kbd>g</kbd>Gain</button>
@@ -359,9 +379,9 @@ button.tab.on:hover{background:#00B4FF;color:var(--bg)}
   <button class="tab" data-view="series"><kbd>2</kbd>Series</button>
   <button class="tab" data-view="result"><kbd>3</kbd>Result</button>
   <button class="tab" data-view="setup"><kbd>4</kbd>Setup</button>
-  <button id="shot"><kbd>s</kbd>Screenshot<em>Y</em></button>
+  <button id="shot"><kbd>s</kbd>Shot<em>Y</em></button>
   <button id="export"><kbd>e</kbd>Export</button>
-  <button id="fs"><kbd>f</kbd>Full screen</button>
+  <button id="fs"><kbd>f</kbd>Full</button>
   <div class="pair">
     <button id="smaller"><kbd>-</kbd>A</button>
     <button id="bigger"><kbd>+</kbd>A</button>
