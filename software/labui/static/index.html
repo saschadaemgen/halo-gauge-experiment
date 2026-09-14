@@ -508,7 +508,8 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
           <label>sensor<input id="s-sensor" placeholder="ALS-PT19"></label>
           <label>aperture<input id="s-aperture" placeholder="1.0mm"></label>
           <label>scale<input id="s-scale" placeholder="1:1"></label>
-          <label>step<input id="s-point_step" type="number" step="0.1"></label>
+          <label>unit<input id="s-unit" placeholder="MPa or deg"></label>
+      <label>step<input id="s-point_step" type="number" step="0.1"></label>
           <label>from<input id="s-point_min" type="number" step="0.1"></label>
           <label>to<input id="s-point_max" type="number" step="0.1"></label>
           <label class="wide">notes<input id="s-notes"></label>
@@ -522,6 +523,11 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
         <div class="bar" id="p-bar">no campaign selected</div>
       </div>
     </div>
+  </div>
+
+  <div class="page" id="pg-curve">
+    <div class="wrap" id="cvwrap"><canvas id="cv-curve"></canvas></div>
+    <div class="bar" id="cv-bar">no campaign selected</div>
   </div>
 
   <div class="page" id="pg-result">
@@ -543,6 +549,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   <button class="tab" data-view="series"><kbd>2</kbd>Series</button>
   <button class="tab" data-view="result"><kbd>3</kbd>Result</button>
   <button class="tab" data-view="setup"><kbd>4</kbd>Setup</button>
+  <button class="tab" data-view="curve"><kbd>5</kbd>Curve</button>
   <button id="shot"><kbd>s</kbd>Shot</button>
   <button id="export"><kbd>e</kbd>Export</button>
   <button id="menu"><kbd>esc</kbd>Menu</button>
@@ -631,6 +638,7 @@ const $ = s => document.querySelector(s);
 const fmt = v => v.toFixed(0);
 const FONT = '"DejaVu Sans Mono","Liberation Mono",monospace';
 const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize);
+const C_BEAM = "#009FE3", C_NEEDLE = "#FCB803", C_DIAL = "#F1EFE8", C_DIM = "#8A99A5";
 
 /* ---------- ui scale ---------- */
 let ui = parseFloat(localStorage.getItem("halo-ui") || "0") || 18;
@@ -649,7 +657,7 @@ $("#smaller").addEventListener("click", () => setUi(ui - 2));
 /* ---------- views ---------- */
 let manualUntil = 0;
 function show(name, manual){
-  ["live","series","result","setup"].forEach(v => $("#pg-"+v).classList.toggle("on", v === name));
+  ["live","series","result","setup","curve"].forEach(v => $("#pg-"+v).classList.toggle("on", v === name));
   document.querySelectorAll("button.tab").forEach(b => b.classList.toggle("on", b.dataset.view === name));
   $("#v-name").textContent = name;
   if(manual) manualUntil = Date.now() + 30000;
@@ -685,6 +693,7 @@ function live(o){
 /* ---------- charts ---------- */
 const lv = $("#livechart"), lc = lv.getContext("2d");
 const cv = $("#chart"),     cx = cv.getContext("2d");
+const qv = $("#cv-curve"),  qx = qv.getContext("2d");
 function fit(canvas, ctx, wrapSel){
   const b = $(wrapSel).getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   if(b.width < 10 || b.height < 10) return false;
@@ -694,6 +703,7 @@ function fit(canvas, ctx, wrapSel){
 function sizeCharts(){
   if($("#pg-live").classList.contains("on") && fit(lv, lc, "#livewrap")) drawLive();
   if($("#pg-series").classList.contains("on") && fit(cv, cx, "#wrap")) drawChart();
+  if($("#pg-curve").classList.contains("on") && fit(qv, qx, "#cvwrap")) drawCurve();
 }
 addEventListener("resize", sizeCharts);
 
@@ -911,11 +921,15 @@ function armed(key, label){
   pending = {key, label};
   const cd = $("#cd");
   const name = label || (key === "y" ? "yellow" : "white");
-  $("#cd-what").textContent = label ? "POSITION THE SPECIMEN" : "PLACE THE SPECIMEN";
+  const s0 = sessions.find(x => x.id === sSel) || {};
+  const deg = ((s0.s_unit || "").trim().toLowerCase().startsWith("deg"));
+  $("#cd-what").textContent = label ? (deg ? "SET THE ANGLE" : "POSITION THE SPECIMEN")
+                                    : "PLACE THE SPECIMEN";
   $("#cd-card").textContent = name;
   $("#cd-card").className = "card" + (label || key === "y" ? "" : " white");
   $("#cd-hint").textContent = label
-    ? "Insert the card for this needle position, close the stack, then confirm."
+    ? (deg ? "Turn the rotor to this mark on the collar, then confirm."
+           : "Insert the card for this needle position, close the stack, then confirm.")
     : "Insert the " + name + " reference card, close the stack, then confirm.";
   clearArm();
   cd.classList.remove("counting", "armed", "hot", "lift");
@@ -932,7 +946,9 @@ const WARNINGS = [
   "Keep external emitters clear of the reflectance chamber. Do not touch the fixture.",
   "Chamber sealed. Any stray light or contact during sampling voids the series.",
   "Differential mode. Ambient is sampled with the emitter dark, hold the bench still.",
-  "470 nm emitter armed. Do not look into the aperture, do not open the stack."
+  "470 nm emitter armed. Do not look into the aperture, do not open the stack.",
+  "Vessel under pressure. Do not discharge, do not vent while a series is open.",
+  "Rotor locked for this reading. Release only when the bar has cleared."
 ];
 
 let armTimers = [];
@@ -1037,6 +1053,9 @@ addEventListener("keydown", e => {
   else if(k === "2"){ show("series", true); }
   else if(k === "3"){ show("result", true); }
   else if(k === "4"){ show("setup", true); }
+  else if(k === "5"){ show("curve", true); }
+  else if(k === "k"){ const o = ["C","B","PT-A","PT-B"];
+        curveCh = o[(o.indexOf(curveCh) + 1) % o.length]; loadCurve(); toast("curve: " + curveCh); }
   else if(k === "m"){ e.preventDefault(); measurePoint(); }
   else if(k === "e"){ e.preventDefault(); $("#export").click(); }
   else if(k === "+" || k === "="){ setUi(ui + 2); }
@@ -1171,10 +1190,97 @@ function fxOnce(){
 function fxSchedule(){ setTimeout(fxOnce, rnd(5000, 8000)); }
 if(!matchMedia("(prefers-reduced-motion: reduce)").matches) fxSchedule();
 
+/* ---------- curve ----------
+   The campaign as it is being measured. Every finished point lands here, so
+   the shape of the needle shadow appears while the series is still running. */
+let curve = [], curveCh = "C";
+function loadCurve(){
+  if(!sSel){ curve = []; $("#cv-bar").textContent = "no campaign selected"; drawCurve(); return; }
+  api("/sessions/" + sSel + "/curve").then(rows => {
+    curve = rows.filter(r => r.x !== null);
+    const s = sessions.find(x => x.id === sSel) || {};
+    const unit = (s.s_unit || s.unit || "").trim();
+    $("#cv-bar").textContent = curve.length
+      ? `${curve.length} points  |  ${s.title || ""}  |  channel ${curveCh}  |  press k to cycle channel`
+      : "no point measured yet";
+    drawCurve();
+  }).catch(() => {});
+}
+function drawCurve(){
+  const W = qv.clientWidth, H = qv.clientHeight;
+  qx.clearRect(0, 0, W, H);
+  if(!W || !H) return;
+  const L = 3.6*rem(), T = 1.2*rem(), B = 2.6*rem(), R = 1.2*rem();
+  const pw = W - L - R, ph = H - T - B;
+  if(!curve.length){
+    qx.fillStyle = C_DIM; qx.font = (0.9*rem()) + "px " + FONT;
+    qx.fillText("waiting for the first point", L, T + ph/2);
+    return;
+  }
+  const xs = curve.map(r => r.x);
+  const ys = curve.map(r => (r[curveCh] || {}).on || 0);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const lo = Math.min(...ys), hi = Math.max(...ys);
+  const pad = (hi - lo) * 0.18 + 1;
+  const yl = Math.max(0, lo - pad), yh = hi + pad;
+  const X = v => L + (x1 === x0 ? pw/2 : (v - x0)/(x1 - x0)*pw);
+  const Y = v => T + ph - (v - yl)/(yh - yl)*ph;
+
+  qx.strokeStyle = "#151C22"; qx.lineWidth = 1;
+  for(let i = 0; i <= 4; i++){
+    const y = T + ph*i/4;
+    qx.beginPath(); qx.moveTo(L, y); qx.lineTo(L + pw, y); qx.stroke();
+    qx.fillStyle = C_DIM; qx.font = (0.7*rem()) + "px " + FONT;
+    qx.fillText(fmt(yh - (yh - yl)*i/4), 2, y + 3);
+  }
+  curve.forEach(r => {
+    const x = X(r.x);
+    qx.strokeStyle = "#151C22";
+    qx.beginPath(); qx.moveTo(x, T); qx.lineTo(x, T + ph); qx.stroke();
+  });
+
+  // the deepest point is the needle, mark it
+  let imin = 0; ys.forEach((v, i) => { if(v < ys[imin]) imin = i; });
+
+  qx.strokeStyle = C_BEAM; qx.lineWidth = 2;
+  qx.shadowColor = "rgba(0,159,227,.55)"; qx.shadowBlur = 10;
+  qx.beginPath();
+  curve.forEach((r, i) => {
+    const x = X(r.x), y = Y(ys[i]);
+    i ? qx.lineTo(x, y) : qx.moveTo(x, y);
+  });
+  qx.stroke(); qx.shadowBlur = 0;
+
+  curve.forEach((r, i) => {
+    const x = X(r.x), y = Y(ys[i]);
+    qx.fillStyle = (i === imin) ? C_NEEDLE : C_DIAL;
+    qx.beginPath(); qx.arc(x, y, i === imin ? 4 : 2.4, 0, 7); qx.fill();
+  });
+  const xm = X(curve[imin].x);
+  qx.strokeStyle = C_NEEDLE; qx.lineWidth = 1; qx.setLineDash([3, 3]);
+  qx.beginPath(); qx.moveTo(xm, T); qx.lineTo(xm, T + ph); qx.stroke(); qx.setLineDash([]);
+  qx.fillStyle = C_NEEDLE; qx.font = (0.78*rem()) + "px " + FONT;
+  qx.fillText(curve[imin].label, Math.min(xm + 6, W - 8*rem()), T + 1.1*rem());
+
+  qx.fillStyle = C_DIM; qx.font = (0.7*rem()) + "px " + FONT;
+  qx.fillText(curve[0].label, L, H - 0.8*rem());
+  const last = curve[curve.length-1].label;
+  qx.fillText(last, L + pw - qx.measureText(last).width, H - 0.8*rem());
+
+  // how deep is the dip, in units of the scatter
+  const flat = ys.filter((_, i) => i !== imin);
+  const mean = flat.reduce((a, b) => a + b, 0) / Math.max(flat.length, 1);
+  const dip = mean > 0 ? 100*(mean - ys[imin])/mean : 0;
+  const sd = curve.map(r => (r[curveCh]||{}).sd || 0).reduce((a,b)=>a+b,0)/curve.length;
+  qx.fillStyle = C_BEAM; qx.font = (0.82*rem()) + "px " + FONT;
+  qx.fillText(`dip ${dip.toFixed(1)} %` + (sd > 0 ? `   ${((mean-ys[imin])/sd).toFixed(0)} x noise` : ""),
+              L, H - 0.8*rem() - 1.1*rem());
+}
+
 /* ---------- setup: gauges, campaigns, needle positions ---------- */
 const GF = ["manufacturer","model","dial_mm","unit","range_min","range_max",
             "sweep_deg","needle_colour","notes"];
-const SF = ["title","sensor","aperture","scale","point_step","point_min","point_max","notes"];
+const SF = ["title","sensor","aperture","scale","unit","point_step","point_min","point_max","notes"];
 let gauges = [], sessions = [], points = [], gSel = null, sSel = null, nextPoint = null;
 
 const api = (path, method, body) =>
@@ -1228,6 +1334,7 @@ function selectSession(id){
   fillForm("s", SF, s);
   if(s && s.aperture) $("#ap").value = s.aperture;
   api("/active", "POST", {session_id: id}).then(() => pushMeta());
+  loadCurve();
   renderSessions();
   loadPoints();
 }
@@ -1248,6 +1355,7 @@ function loadPoints(){
       $("#p-list").querySelectorAll(".pt").forEach(o => o.classList.toggle("cur", o === el));
       $("#p-bar").textContent = "next: " + nextPoint.label;
     });
+    loadCurve();
     const done = points.filter(x => x.done).length;
     $("#p-bar").textContent = `${done} of ${points.length} measured` +
       (nextPoint ? `, next ${nextPoint.label}` : ", all done") +

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   point_min  REAL,
   point_max  REAL,
   point_step REAL NOT NULL DEFAULT 1.0,
+  unit       TEXT NOT NULL DEFAULT '',
   notes      TEXT NOT NULL DEFAULT '',
   created    TEXT NOT NULL
 );
@@ -85,7 +86,7 @@ CREATE INDEX IF NOT EXISTS ix_reports_session ON reports(session_id);
 GAUGE_FIELDS = ["manufacturer", "model", "dial_mm", "range_min", "range_max", "unit",
                 "sweep_deg", "needle_colour", "dial_colour", "notes"]
 SESSION_FIELDS = ["gauge_id", "title", "sensor", "aperture", "scale",
-                  "point_min", "point_max", "point_step", "notes"]
+                  "point_min", "point_max", "point_step", "unit", "notes"]
 
 
 def _now():
@@ -102,6 +103,10 @@ class Store:
         self.db.execute("PRAGMA foreign_keys=ON")
         with self.lock:
             self.db.executescript(SCHEMA)
+            # databases made before the campaign unit existed get the column now
+            cols = [r[1] for r in self.db.execute("PRAGMA table_info(sessions)")]
+            if "unit" not in cols:
+                self.db.execute("ALTER TABLE sessions ADD COLUMN unit TEXT NOT NULL DEFAULT ''")
             self.db.commit()
         if not self.gauges():
             self.add_gauge({"manufacturer": "Huben", "model": "GK1", "dial_mm": 20.0,
@@ -158,7 +163,7 @@ class Store:
     # -------------------------------------------------------------- sessions
     def sessions(self):
         return self._rows("""
-            SELECT s.*, g.manufacturer, g.model, g.unit, g.range_min AS g_min,
+            SELECT s.*, s.unit AS s_unit, g.manufacturer, g.model, g.unit AS g_unit, g.range_min AS g_min,
                    g.range_max AS g_max, g.dial_mm, g.sweep_deg,
                    (SELECT COUNT(*) FROM series WHERE session_id=s.id) AS n_series
             FROM sessions s LEFT JOIN gauges g ON g.id = s.gauge_id
@@ -203,7 +208,9 @@ class Store:
         step = s["point_step"] or 1.0
         if lo is None or hi is None or step <= 0 or hi < lo:
             return []
-        unit = s.get("unit") or ""
+        # a campaign can run in degrees of rotor travel instead of pressure,
+        # which is what the turning head does
+        unit = (s.get("s_unit") or "").strip() or (s.get("g_unit") or "")
         decimals = 0 if abs(step - round(step)) < 1e-9 else (1 if abs(step * 10 - round(step * 10)) < 1e-9 else 2)
         measured = {r["label"] for r in
                     self._rows("SELECT DISTINCT label FROM series WHERE session_id=?", (sid,))}
@@ -237,6 +244,33 @@ class Store:
     def series_of(self, sid):
         return self._rows("""SELECT id,label,target,light,gain,aperture,samples,saturated,stem,created
                              FROM series WHERE session_id=? ORDER BY id""", (sid,))
+
+    def curve(self, sid):
+        """Every measured point of a campaign, reduced to what a curve needs:
+        the numeric part of the label and the signal of each channel."""
+        out = []
+        for r in self._rows("SELECT label,target,payload FROM series WHERE session_id=? ORDER BY id",
+                            (sid,)):
+            try:
+                p = json.loads(r["payload"])
+            except Exception:
+                continue
+            num = None
+            for tok in (r["label"] or "").replace(",", ".").split():
+                try:
+                    num = float(tok); break
+                except ValueError:
+                    continue
+            on, off = p.get("on", {}), p.get("off", {})
+            row = {"label": r["label"], "x": num, "target": r["target"]}
+            for ch in ("C", "R", "G", "B", "PT-A", "PT-B"):
+                a = on.get(ch) or [0, 0]
+                b = off.get(ch) or [0, 0]
+                row[ch] = {"on": a[0], "sd": a[1] if len(a) > 1 else 0,
+                           "signal": a[0] - b[0]}
+            out.append(row)
+        out.sort(key=lambda r: (r["x"] is None, r["x"]))
+        return out
 
     def reports_of(self, sid):
         return self._rows("""SELECT id,light,best,best_snr,go,stem,created

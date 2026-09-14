@@ -660,6 +660,7 @@ def make_handler(hub, link, recorder):
                 if head == "sessions":
                     if method == "GET":
                         if rid and tail == "points":  return self._json(store.points(rid))
+                        if rid and tail == "curve":   return self._json(store.curve(rid))
                         if rid and tail == "series":  return self._json(store.series_of(rid))
                         if rid and tail == "reports": return self._json(store.reports_of(rid))
                         if rid and tail == "export":  return self._json(store.export(rid))
