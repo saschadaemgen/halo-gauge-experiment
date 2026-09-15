@@ -452,6 +452,9 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
     <span class="chip"><b>light</b><i id="s-light" style="color:var(--beam)">blue</i></span>
     <span class="chip"><b>gain</b><i id="s-gain">16x</i></span>
     <span class="chip"><b>aperture</b><input id="ap" value="none"></span>
+    <span class="chip"><b>campaign</b><i id="m-camp" style="color:var(--beam)">none</i></span>
+    <span class="chip"><b>next</b><i id="m-next" style="color:var(--needle)">-</i></span>
+    <span class="chip"><b>n</b><i id="m-n">50</i></span>
     <span class="chip"><b>view</b><i id="v-name" style="color:var(--beam)">live</i></span>
     <span class="chip link"><i id="dot"></i><i id="s-link">no link</i></span>
   </div>
@@ -539,20 +542,22 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
 <footer>
   <button data-key="w" class="go"><kbd>w</kbd>White<em>A</em></button>
   <button data-key="y" class="go"><kbd>y</kbd>Yellow<em>B</em></button>
-  <button id="point" class="go"><kbd>m</kbd>Point<em>X</em></button>
+  <button id="point" class="go"><kbd>m</kbd>Measure<em>X</em></button>
   <button data-key="r" class="go"><kbd>r</kbd>Report<em>Y</em></button>
   <button data-key="i"><kbd>i</kbd>Light</button>
   <button data-key="g"><kbd>g</kbd>Gain</button>
   <button data-key="n"><kbd>n</kbd>Samples</button>
   <button data-key="c"><kbd>c</kbd>Clear</button>
   <button class="tab on" data-view="live"><kbd>1</kbd>Live</button>
-  <button class="tab" data-view="series"><kbd>2</kbd>Series</button>
-  <button class="tab" data-view="result"><kbd>3</kbd>Result</button>
-  <button class="tab" data-view="setup"><kbd>4</kbd>Setup</button>
-  <button class="tab" data-view="curve"><kbd>5</kbd>Curve</button>
-  <button id="shot"><kbd>s</kbd>Shot</button>
-  <button id="export"><kbd>e</kbd>Export</button>
-  <button id="menu"><kbd>esc</kbd>Menu</button>
+  <button class="tab" data-view="series"><kbd>2</kbd>Run</button>
+  <button class="tab" data-view="curve"><kbd>3</kbd>Curve</button>
+  <button class="tab" data-view="result"><kbd>4</kbd>Verdict</button>
+  <button class="tab" data-view="setup"><kbd>5</kbd>Plan</button>
+  <button id="chan"><kbd>h</kbd>Channel</button>
+  <div class="pair">
+    <button id="export"><kbd>e</kbd>Export</button>
+    <button id="shot"><kbd>s</kbd>Shot</button>
+  </div>
   <div class="pair">
     <button id="smaller"><kbd>-</kbd>A</button>
     <button id="bigger"><kbd>+</kbd>A</button>
@@ -893,10 +898,14 @@ es.onmessage = ev => {
       $("#h-fw").textContent = (o.fw || "unknown") + (o.tcs ? "" : ", no colour sensor");
       if(o.light) $("#s-light").textContent = o.light;
       if(o.gain) $("#s-gain").textContent = o.gain;
+      if(o.samples) $("#m-n").textContent = o.samples;
       break;
-    case "ack": $("#s-light").textContent = o.light; $("#s-gain").textContent = o.gain; break;
+    case "ack":
+      $("#s-light").textContent = o.light; $("#s-gain").textContent = o.gain;
+      if(o.samples) $("#m-n").textContent = o.samples;
+      break;
     case "live": live(o); break;
-    case "run": startRun(o); break;
+    case "run": if(o.samples) $("#m-n").textContent = o.samples; startRun(o); break;
     case "sample": sample(o); break;
     case "series": series(o); break;
     case "report": report(o); break;
@@ -1029,9 +1038,9 @@ $("#ap").addEventListener("change", pushMeta);
 $("#shot").addEventListener("click", () =>
   fetch("/shot",{method:"POST"}).then(r=>r.json())
     .then(r=>toast(r.ok ? "saved " + r.path : "screenshot: " + r.error)));
-$("#menu").addEventListener("click", () => {
+function toMenu(){
   location.href = "http://" + location.hostname + ":8750/";
-});
+}
 function toggleFull(){
   if(document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(()=>toast("full screen refused"));
@@ -1048,14 +1057,13 @@ addEventListener("keydown", e => {
   if("wyrigcn".includes(k)){ e.preventDefault(); command(k); }
   else if(k === "s"){ e.preventDefault(); $("#shot").click(); }
   else if(k === "f"){ e.preventDefault(); toggleFull(); }
-  else if(e.key === "Escape"){ e.preventDefault(); $("#menu").click(); }
+  else if(e.key === "Escape"){ e.preventDefault(); toMenu(); }
   else if(k === "1"){ show("live", true); }
   else if(k === "2"){ show("series", true); }
-  else if(k === "3"){ show("result", true); }
-  else if(k === "4"){ show("setup", true); }
-  else if(k === "5"){ show("curve", true); }
-  else if(k === "k"){ const o = ["C","B","PT-A","PT-B"];
-        curveCh = o[(o.indexOf(curveCh) + 1) % o.length]; loadCurve(); toast("curve: " + curveCh); }
+  else if(k === "3"){ show("curve", true); }
+  else if(k === "4"){ show("result", true); }
+  else if(k === "5"){ show("setup", true); }
+  else if(k === "h"){ $("#chan").click(); }
   else if(k === "m"){ e.preventDefault(); measurePoint(); }
   else if(k === "e"){ e.preventDefault(); $("#export").click(); }
   else if(k === "+" || k === "="){ setUi(ui + 2); }
@@ -1124,6 +1132,12 @@ setTimeout(pingRun, 3000);
 /* ---------- glitch director ----------
    Four effects on real SVG filters, so the picture is displaced and the colour
    channels separated for real. One every five to eight seconds. */
+$("#chan").addEventListener("click", () => {
+  const o = ["C", "B", "PT-A", "PT-B"];
+  curveCh = o[(o.indexOf(curveCh) + 1) % o.length];
+  loadCurve(); show("curve"); toast("curve channel " + curveCh);
+});
+
 const fx = $("#fx");
 const rnd = (a, b) => a + Math.random() * (b - a);
 const SURF = [document.querySelector("header"), document.querySelector("main"),
@@ -1340,7 +1354,7 @@ function selectSession(id){
 }
 
 function loadPoints(){
-  if(!sSel){ $("#p-list").innerHTML = "";
+  if(!sSel){ $("#m-camp").textContent = "none"; $("#m-next").textContent = "-"; $("#p-list").innerHTML = "";
     $("#p-bar").textContent = "no campaign selected"; return; }
   api("/sessions/" + sSel + "/points").then(p => {
     points = p;
@@ -1356,6 +1370,9 @@ function loadPoints(){
       $("#p-bar").textContent = "next: " + nextPoint.label;
     });
     loadCurve();
+    const s2 = sessions.find(x => x.id === sSel) || {};
+    $("#m-camp").textContent = s2.title || "none";
+    $("#m-next").textContent = nextPoint ? nextPoint.label : "all done";
     const done = points.filter(x => x.done).length;
     $("#p-bar").textContent = `${done} of ${points.length} measured` +
       (nextPoint ? `, next ${nextPoint.label}` : ", all done") +
