@@ -248,6 +248,9 @@ button.tab.on{color:var(--beam);background:#0C1E28;border-color:var(--beam);
 button.tab.on kbd{color:var(--dial);opacity:1}
 button.tab.on:hover{background:#102936;color:var(--beam)}
 
+.trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px}
+.trio button{border-right:none}
+.trio button:last-child{border-right:1px solid var(--line)}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;min-width:0}
 .chip input{font-family:var(--mono);font-size:.95rem;color:var(--needle);background:transparent;
   border:none;width:4.6rem;padding:0;min-width:0}
@@ -554,9 +557,10 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   <button class="tab" data-view="result"><kbd>4</kbd>Verdict</button>
   <button class="tab" data-view="setup"><kbd>5</kbd>Plan</button>
   <button id="chan"><kbd>h</kbd>Channel</button>
-  <div class="pair">
+  <div class="trio">
     <button id="export"><kbd>e</kbd>Export</button>
     <button id="shot"><kbd>s</kbd>Shot</button>
+    <button id="menu"><kbd>q</kbd>Menu</button>
   </div>
   <div class="pair">
     <button id="smaller"><kbd>-</kbd>A</button>
@@ -1042,8 +1046,10 @@ function toMenu(){
   location.href = "http://" + location.hostname + ":8750/";
 }
 function toggleFull(){
-  if(document.fullscreenElement) document.exitFullscreen();
-  else document.documentElement.requestFullscreen().catch(()=>toast("full screen refused"));
+  if(document.fullscreenElement) return document.exitFullscreen();
+  if(Math.abs(innerHeight - screen.height) < 4 && Math.abs(innerWidth - screen.width) < 4)
+    return toast("already full screen");
+  document.documentElement.requestFullscreen().catch(() => toast("full screen refused"));
 }
 
 addEventListener("keydown", e => {
@@ -1057,7 +1063,7 @@ addEventListener("keydown", e => {
   if("wyrigcn".includes(k)){ e.preventDefault(); command(k); }
   else if(k === "s"){ e.preventDefault(); $("#shot").click(); }
   else if(k === "f"){ e.preventDefault(); toggleFull(); }
-  else if(e.key === "Escape"){ e.preventDefault(); toMenu(); }
+  else if(k === "q"){ e.preventDefault(); toMenu(); }
   else if(k === "1"){ show("live", true); }
   else if(k === "2"){ show("series", true); }
   else if(k === "3"){ show("curve", true); }
@@ -1089,7 +1095,7 @@ const BOOTLINES = [
 
 /* ---------- footer ping ----------
    Nine patterns, drawn at random, never the same one twice running. */
-const CELLS = Array.from(document.querySelectorAll("footer > button, footer > .pair"));
+const CELLS = Array.from(document.querySelectorAll("footer > button, footer > .pair, footer > .trio"));
 const HALF = Math.ceil(CELLS.length / 2);
 const ROW_A = CELLS.slice(0, HALF), ROW_B = CELLS.slice(HALF);
 
@@ -1132,6 +1138,7 @@ setTimeout(pingRun, 3000);
 /* ---------- glitch director ----------
    Four effects on real SVG filters, so the picture is displaced and the colour
    channels separated for real. One every five to eight seconds. */
+$("#menu").addEventListener("click", toMenu);
 $("#chan").addEventListener("click", () => {
   const o = ["C", "B", "PT-A", "PT-B"];
   curveCh = o[(o.indexOf(curveCh) + 1) % o.length];
