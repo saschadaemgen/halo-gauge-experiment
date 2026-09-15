@@ -223,6 +223,7 @@ tr.off td{color:var(--dim)}
   font-size:.8rem;color:var(--dim)}
 
 /* ================= footer ================= */
+.wide2{grid-column:span 2}
 footer{display:grid;grid-template-columns:repeat(8,1fr);grid-auto-rows:1fr;
   gap:.4rem;padding:.5rem .8rem;border-top:1px solid var(--line)}
 button{font-family:var(--mono);font-size:clamp(.72rem,.95vw,1rem);color:var(--dim);
@@ -248,9 +249,6 @@ button.tab.on{color:var(--beam);background:#0C1E28;border-color:var(--beam);
 button.tab.on kbd{color:var(--dial);opacity:1}
 button.tab.on:hover{background:#102936;color:var(--beam)}
 
-.trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px}
-.trio button{border-right:none}
-.trio button:last-child{border-right:1px solid var(--line)}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;min-width:0}
 .chip input{font-family:var(--mono);font-size:.95rem;color:var(--needle);background:transparent;
   border:none;width:4.6rem;padding:0;min-width:0}
@@ -455,10 +453,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
     <span class="chip"><b>light</b><i id="s-light" style="color:var(--beam)">blue</i></span>
     <span class="chip"><b>gain</b><i id="s-gain">16x</i></span>
     <span class="chip"><b>aperture</b><input id="ap" value="none"></span>
-    <span class="chip"><b>campaign</b><i id="m-camp" style="color:var(--beam)">none</i></span>
     <span class="chip"><b>next</b><i id="m-next" style="color:var(--needle)">-</i></span>
-    <span class="chip"><b>n</b><i id="m-n">50</i></span>
-    <span class="chip"><b>view</b><i id="v-name" style="color:var(--beam)">live</i></span>
     <span class="chip link"><i id="dot"></i><i id="s-link">no link</i></span>
   </div>
 </header>
@@ -551,21 +546,20 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   <button data-key="g"><kbd>g</kbd>Gain</button>
   <button data-key="n"><kbd>n</kbd>Samples</button>
   <button data-key="c"><kbd>c</kbd>Clear</button>
+
   <button class="tab on" data-view="live"><kbd>1</kbd>Live</button>
   <button class="tab" data-view="series"><kbd>2</kbd>Run</button>
   <button class="tab" data-view="curve"><kbd>3</kbd>Curve</button>
   <button class="tab" data-view="result"><kbd>4</kbd>Verdict</button>
   <button class="tab" data-view="setup"><kbd>5</kbd>Plan</button>
   <button id="chan"><kbd>h</kbd>Channel</button>
-  <div class="trio">
-    <button id="export"><kbd>e</kbd>Export</button>
-    <button id="shot"><kbd>s</kbd>Shot</button>
-    <button id="menu"><kbd>q</kbd>Menu</button>
-  </div>
-  <div class="pair">
-    <button id="smaller"><kbd>-</kbd>A</button>
-    <button id="bigger"><kbd>+</kbd>A</button>
-  </div>
+  <button id="export"><kbd>e</kbd>Export</button>
+  <button id="shot"><kbd>s</kbd>Shot</button>
+
+  <button id="menu" class="wide2"><kbd>q</kbd>Menu</button>
+  <button id="fs" class="wide2"><kbd>f</kbd>Full screen</button>
+  <button id="smaller" class="wide2"><kbd>-</kbd>Text smaller</button>
+  <button id="bigger" class="wide2"><kbd>+</kbd>Text bigger</button>
 </footer>
 <div id="cd"><div class="box">
   <div class="haz"><i></i></div>
@@ -638,6 +632,7 @@ body.fx-drop main,body.fx-drop header,body.fx-drop footer{
   </filter>
 </svg>
 <div id="fx"></div>
+<span id="m-camp" hidden></span><span id="v-name" hidden></span><span id="m-n" hidden></span>
 <div id="toast"></div>
 
 <script>
@@ -1072,8 +1067,8 @@ addEventListener("keydown", e => {
   else if(k === "h"){ $("#chan").click(); }
   else if(k === "m"){ e.preventDefault(); measurePoint(); }
   else if(k === "e"){ e.preventDefault(); $("#export").click(); }
-  else if(k === "+" || k === "="){ setUi(ui + 2); }
-  else if(k === "-"){ setUi(ui - 2); }
+  else if(k === "+" || k === "=" || k === "]" || e.code === "NumpadAdd"){ setUi(ui + 2); }
+  else if(k === "-" || k === "_" || k === "[" || e.code === "NumpadSubtract"){ setUi(ui - 2); }
 });
 
 /* ---------- boot splash ---------- */
@@ -1095,7 +1090,7 @@ const BOOTLINES = [
 
 /* ---------- footer ping ----------
    Nine patterns, drawn at random, never the same one twice running. */
-const CELLS = Array.from(document.querySelectorAll("footer > button, footer > .pair, footer > .trio"));
+const CELLS = Array.from(document.querySelectorAll("footer > button"));
 const HALF = Math.ceil(CELLS.length / 2);
 const ROW_A = CELLS.slice(0, HALF), ROW_B = CELLS.slice(HALF);
 
@@ -1139,6 +1134,7 @@ setTimeout(pingRun, 3000);
    Four effects on real SVG filters, so the picture is displaced and the colour
    channels separated for real. One every five to eight seconds. */
 $("#menu").addEventListener("click", toMenu);
+$("#fs").addEventListener("click", toggleFull);
 $("#chan").addEventListener("click", () => {
   const o = ["C", "B", "PT-A", "PT-B"];
   curveCh = o[(o.indexOf(curveCh) + 1) % o.length];
